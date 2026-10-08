@@ -1,0 +1,3862 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+
+<meta charset="UTF-8">
+
+<meta
+    name="viewport"
+    content="width=device-width, initial-scale=1.0"
+>
+
+<title>APKCity Admin</title>
+
+<meta
+    name="robots"
+    content="noindex,nofollow"
+>
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+
+<link
+    href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap"
+    rel="stylesheet"
+>
+
+<link
+    rel="stylesheet"
+    href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.7.2/css/all.min.css"
+>
+
+<style>
+
+/* =====================================================
+   RESET
+===================================================== */
+
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+:root {
+
+    --bg: #080a0f;
+    --panel: #10141c;
+    --card: #151a23;
+    --input: #0c1017;
+
+    --border: rgba(255,255,255,.08);
+
+    --text: #f5f7fb;
+    --muted: #9299a8;
+
+    --primary: #7c5cff;
+    --primary2: #5d7cff;
+
+    --green: #31d47c;
+    --red: #ff5c6c;
+    --yellow: #ffc857;
+
+}
+
+html {
+    scroll-behavior: smooth;
+}
+
+body {
+
+    font-family: "Inter", sans-serif;
+
+    color: var(--text);
+
+    background:
+        radial-gradient(
+            circle at 80% 0%,
+            rgba(124,92,255,.13),
+            transparent 35%
+        ),
+        radial-gradient(
+            circle at 10% 100%,
+            rgba(93,124,255,.07),
+            transparent 30%
+        ),
+        var(--bg);
+
+    min-height: 100vh;
+
+}
+
+button,
+input,
+textarea,
+select {
+    font-family: inherit;
+}
+
+button {
+    cursor: pointer;
+}
+
+
+/* =====================================================
+   HEADER
+===================================================== */
+
+.header {
+
+    height: 72px;
+
+    position: sticky;
+    top: 0;
+
+    z-index: 100;
+
+    display: flex;
+    align-items: center;
+
+    padding: 0 4%;
+
+    background:
+        rgba(8,10,15,.88);
+
+    backdrop-filter: blur(20px);
+
+    border-bottom:
+        1px solid var(--border);
+
+}
+
+.header-inner {
+
+    width: 100%;
+    max-width: 1450px;
+
+    margin: auto;
+
+    display: flex;
+    align-items: center;
+
+}
+
+.logo {
+
+    display: flex;
+    align-items: center;
+
+    gap: 10px;
+
+    font-size: 20px;
+    font-weight: 800;
+
+}
+
+.logo-icon {
+
+    width: 38px;
+    height: 38px;
+
+    display: grid;
+    place-items: center;
+
+    border-radius: 11px;
+
+    background:
+        linear-gradient(
+            135deg,
+            var(--primary),
+            var(--primary2)
+        );
+
+}
+
+.logo span {
+    color: #9c87ff;
+}
+
+.admin-label {
+
+    padding: 5px 9px;
+
+    margin-left: 4px;
+
+    border-radius: 7px;
+
+    background:
+        rgba(124,92,255,.1);
+
+    border:
+        1px solid
+        rgba(124,92,255,.2);
+
+    color: #ad9cff;
+
+    font-size: 9px;
+    font-weight: 700;
+
+}
+
+.header-right {
+
+    margin-left: auto;
+
+    display: flex;
+    align-items: center;
+
+    gap: 8px;
+
+}
+
+.header-btn {
+
+    height: 38px;
+
+    padding: 0 13px;
+
+    border-radius: 9px;
+
+    border:
+        1px solid var(--border);
+
+    background: var(--card);
+
+    color: #d9dce4;
+
+    font-size: 10px;
+    font-weight: 600;
+
+}
+
+.header-btn:hover {
+    border-color: rgba(124,92,255,.35);
+}
+
+.logout-btn:hover {
+    color: #ff8b95;
+    border-color: rgba(255,92,108,.25);
+}
+
+
+/* =====================================================
+   LAYOUT
+===================================================== */
+
+.layout {
+
+    width: 92%;
+    max-width: 1450px;
+
+    margin: auto;
+
+    display: grid;
+
+    grid-template-columns: 220px 1fr;
+
+    min-height:
+        calc(100vh - 72px);
+
+}
+
+
+/* =====================================================
+   SIDEBAR
+===================================================== */
+
+.sidebar {
+
+    padding:
+        30px 15px 30px 0;
+
+    border-right:
+        1px solid var(--border);
+
+}
+
+.sidebar-title {
+
+    color: #626978;
+
+    font-size: 9px;
+
+    font-weight: 700;
+
+    letter-spacing: 1px;
+
+    text-transform: uppercase;
+
+    margin:
+        10px 12px 12px;
+
+}
+
+.side-link {
+
+    width: 100%;
+
+    height: 43px;
+
+    display: flex;
+    align-items: center;
+
+    gap: 12px;
+
+    padding: 0 13px;
+
+    margin-bottom: 4px;
+
+    border: none;
+
+    border-radius: 10px;
+
+    background: transparent;
+
+    color: var(--muted);
+
+    text-align: left;
+
+    font-size: 11px;
+
+    font-weight: 600;
+
+}
+
+.side-link i {
+
+    width: 18px;
+
+    text-align: center;
+
+}
+
+.side-link.active,
+.side-link:hover {
+
+    background:
+        rgba(124,92,255,.1);
+
+    color: #b3a4ff;
+
+}
+
+
+/* =====================================================
+   MAIN
+===================================================== */
+
+.main {
+
+    padding:
+        35px 0 70px 35px;
+
+    min-width: 0;
+
+}
+
+.page-title {
+
+    margin-bottom: 25px;
+
+}
+
+.page-title h1 {
+
+    font-size: 28px;
+
+    letter-spacing: -.8px;
+
+    margin-bottom: 7px;
+
+}
+
+.page-title p {
+
+    color: var(--muted);
+
+    font-size: 11px;
+
+}
+
+
+/* =====================================================
+   STATS
+===================================================== */
+
+.stats {
+
+    display: grid;
+
+    grid-template-columns:
+        repeat(4,1fr);
+
+    gap: 12px;
+
+    margin-bottom: 22px;
+
+}
+
+.stat {
+
+    padding: 17px;
+
+    border:
+        1px solid var(--border);
+
+    border-radius: 14px;
+
+    background:
+        rgba(16,20,28,.82);
+
+}
+
+.stat-top {
+
+    display: flex;
+    align-items: center;
+
+    justify-content: space-between;
+
+    margin-bottom: 10px;
+
+}
+
+.stat-icon {
+
+    width: 31px;
+    height: 31px;
+
+    display: grid;
+    place-items: center;
+
+    border-radius: 8px;
+
+    background:
+        rgba(124,92,255,.1);
+
+    color: #a492ff;
+
+    font-size: 11px;
+
+}
+
+.stat-label {
+
+    color: var(--muted);
+
+    font-size: 9px;
+
+}
+
+.stat-value {
+
+    font-size: 21px;
+
+    font-weight: 800;
+
+}
+
+
+/* =====================================================
+   MANAGEMENT TOOLBAR
+===================================================== */
+
+.management {
+
+    display: none;
+
+}
+
+.management.active {
+    display: block;
+}
+
+.toolbar {
+
+    display: flex;
+
+    align-items: center;
+
+    gap: 10px;
+
+    margin-bottom: 17px;
+
+}
+
+.search-box {
+
+    position: relative;
+
+    flex: 1;
+
+}
+
+.search-box i {
+
+    position: absolute;
+
+    left: 13px;
+    top: 50%;
+
+    transform:
+        translateY(-50%);
+
+    color: #5d6573;
+
+    font-size: 11px;
+
+}
+
+.search-box input {
+
+    height: 43px;
+
+    padding-left: 37px;
+
+}
+
+
+/* =====================================================
+   APP LIST
+===================================================== */
+
+.apps-list {
+
+    display: grid;
+
+    gap: 10px;
+
+}
+
+.empty-state {
+
+    padding: 60px 20px;
+
+    text-align: center;
+
+    border:
+        1px dashed
+        rgba(255,255,255,.1);
+
+    border-radius: 15px;
+
+    color: var(--muted);
+
+}
+
+.empty-state i {
+
+    display: block;
+
+    font-size: 30px;
+
+    margin-bottom: 14px;
+
+    color: #4d5563;
+
+}
+
+.empty-state strong {
+
+    display: block;
+
+    color: #dce0e8;
+
+    font-size: 13px;
+
+    margin-bottom: 6px;
+
+}
+
+.empty-state span {
+
+    font-size: 9px;
+
+}
+
+
+.app-row {
+
+    display: grid;
+
+    grid-template-columns:
+        58px
+        minmax(0,1fr)
+        auto;
+
+    gap: 14px;
+
+    align-items: center;
+
+    padding: 14px;
+
+    background:
+        var(--panel);
+
+    border:
+        1px solid var(--border);
+
+    border-radius: 14px;
+
+}
+
+.app-row-icon {
+
+    width: 58px;
+    height: 58px;
+
+    object-fit: cover;
+
+    border-radius: 14px;
+
+    background: #1b202b;
+
+}
+
+.app-row-info {
+    min-width: 0;
+}
+
+.app-row-name {
+
+    display: flex;
+
+    align-items: center;
+
+    gap: 7px;
+
+    font-size: 13px;
+
+    font-weight: 700;
+
+    margin-bottom: 5px;
+
+}
+
+.verified {
+
+    color: #5d9dff;
+
+    font-size: 10px;
+
+}
+
+.app-row-meta {
+
+    display: flex;
+
+    flex-wrap: wrap;
+
+    gap: 6px;
+
+}
+
+.meta {
+
+    padding: 4px 7px;
+
+    border-radius: 5px;
+
+    background: #171d27;
+
+    color: var(--muted);
+
+    font-size: 8px;
+
+}
+
+.app-row-tags {
+
+    color: #666f7e;
+
+    font-size: 8px;
+
+    margin-top: 6px;
+
+    white-space: nowrap;
+
+    overflow: hidden;
+
+    text-overflow: ellipsis;
+
+}
+
+.app-actions {
+
+    display: flex;
+
+    gap: 7px;
+
+}
+
+.icon-btn {
+
+    width: 36px;
+    height: 36px;
+
+    display: grid;
+    place-items: center;
+
+    border-radius: 9px;
+
+    border:
+        1px solid var(--border);
+
+    background: #171d27;
+
+    color: #aeb5c2;
+
+    font-size: 10px;
+
+}
+
+.icon-btn:hover {
+    border-color: rgba(124,92,255,.35);
+    color: #c8beff;
+}
+
+.icon-btn.delete:hover {
+    border-color: rgba(255,92,108,.3);
+    color: #ff7d88;
+    background: rgba(255,92,108,.06);
+}
+
+
+/* =====================================================
+   FORM
+===================================================== */
+
+.form-management {
+    display: block;
+}
+
+.form-management.hidden {
+    display: none;
+}
+
+.form-layout {
+
+    display: grid;
+
+    grid-template-columns:
+        minmax(0,1fr)
+        320px;
+
+    gap: 18px;
+
+}
+
+.panel {
+
+    background:
+        var(--panel);
+
+    border:
+        1px solid var(--border);
+
+    border-radius: 17px;
+
+    padding: 22px;
+
+    margin-bottom: 18px;
+
+}
+
+.panel-title {
+
+    display: flex;
+
+    align-items: center;
+
+    gap: 9px;
+
+    font-size: 14px;
+
+    font-weight: 700;
+
+    margin-bottom: 20px;
+
+}
+
+.panel-title i {
+    color: #9a86ff;
+}
+
+.form-grid {
+
+    display: grid;
+
+    grid-template-columns:
+        repeat(2,1fr);
+
+    gap: 15px;
+
+}
+
+.field {
+
+    display: flex;
+
+    flex-direction: column;
+
+    gap: 7px;
+
+}
+
+.field.full {
+    grid-column: 1 / -1;
+}
+
+.field label {
+
+    color: #c5c9d2;
+
+    font-size: 10px;
+
+    font-weight: 600;
+
+}
+
+.field label span {
+
+    color: #686f7d;
+
+    font-weight: 400;
+
+}
+
+input,
+textarea,
+select {
+
+    width: 100%;
+
+    outline: none;
+
+    border:
+        1px solid var(--border);
+
+    background:
+        var(--input);
+
+    color: white;
+
+    border-radius: 9px;
+
+    font-size: 11px;
+
+}
+
+input,
+select {
+
+    height: 43px;
+
+    padding: 0 12px;
+
+}
+
+textarea {
+
+    min-height: 110px;
+
+    padding: 12px;
+
+    resize: vertical;
+
+    line-height: 1.6;
+
+}
+
+input:focus,
+textarea:focus,
+select:focus {
+
+    border-color:
+        rgba(124,92,255,.55);
+
+    box-shadow:
+        0 0 0 3px
+        rgba(124,92,255,.08);
+
+}
+
+
+/* =====================================================
+   SCREENSHOTS
+===================================================== */
+
+.screenshot-list {
+
+    display: grid;
+
+    gap: 12px;
+
+}
+
+.screenshot-field {
+
+    display: grid;
+
+    grid-template-columns:
+        35px 1fr;
+
+    gap: 10px;
+
+    align-items: center;
+
+}
+
+.shot-number {
+
+    width: 35px;
+    height: 35px;
+
+    border-radius: 9px;
+
+    display: grid;
+    place-items: center;
+
+    background: #1a2030;
+
+    color: #9d8cff;
+
+    font-size: 11px;
+
+    font-weight: 700;
+
+}
+
+
+/* =====================================================
+   CHECKS
+===================================================== */
+
+.checks {
+
+    display: flex;
+
+    gap: 20px;
+
+    flex-wrap: wrap;
+
+}
+
+.check {
+
+    display: flex;
+
+    align-items: center;
+
+    gap: 8px;
+
+    color: #b8bdc8;
+
+    font-size: 10px;
+
+}
+
+.check input {
+
+    width: 16px;
+    height: 16px;
+
+    accent-color:
+        var(--primary);
+
+}
+
+
+/* =====================================================
+   ACTIONS
+===================================================== */
+
+.actions {
+
+    display: flex;
+
+    gap: 10px;
+
+    margin-bottom: 18px;
+
+}
+
+.btn {
+
+    height: 47px;
+
+    padding:
+        0 20px;
+
+    border: none;
+
+    border-radius: 10px;
+
+    display: inline-flex;
+
+    align-items: center;
+
+    justify-content: center;
+
+    gap: 8px;
+
+    font-size: 11px;
+
+    font-weight: 700;
+
+}
+
+.btn-primary {
+
+    color: white;
+
+    background:
+        linear-gradient(
+            135deg,
+            var(--primary),
+            var(--primary2)
+        );
+
+    box-shadow:
+        0 10px 25px
+        rgba(124,92,255,.18);
+
+}
+
+.btn-secondary {
+
+    color: #c8ccd5;
+
+    background:
+        #181e28;
+
+    border:
+        1px solid var(--border);
+
+}
+
+.btn-danger {
+
+    color: #ff7c88;
+
+    background:
+        rgba(255,92,108,.08);
+
+    border:
+        1px solid
+        rgba(255,92,108,.15);
+
+}
+
+
+/* =====================================================
+   PREVIEW
+===================================================== */
+
+.preview-box {
+
+    position: sticky;
+
+    top: 95px;
+
+}
+
+.preview-label {
+
+    color: var(--muted);
+
+    font-size: 9px;
+
+    text-transform: uppercase;
+
+    letter-spacing: 1px;
+
+    margin-bottom: 12px;
+
+}
+
+.app-preview {
+
+    background:
+        #0c1017;
+
+    border:
+        1px solid var(--border);
+
+    border-radius: 15px;
+
+    padding: 16px;
+
+}
+
+.preview-top {
+
+    display: flex;
+
+    gap: 13px;
+
+    align-items: center;
+
+}
+
+.preview-icon {
+
+    width: 65px;
+    height: 65px;
+
+    border-radius: 16px;
+
+    object-fit: cover;
+
+    background: #1a1f29;
+
+}
+
+.preview-name {
+
+    font-size: 14px;
+
+    font-weight: 700;
+
+    margin-bottom: 5px;
+
+}
+
+.preview-developer {
+
+    color: var(--muted);
+
+    font-size: 9px;
+
+}
+
+.preview-category {
+
+    display: inline-block;
+
+    margin-top: 7px;
+
+    padding: 4px 7px;
+
+    border-radius: 5px;
+
+    background:
+        rgba(124,92,255,.1);
+
+    color: #a995ff;
+
+    font-size: 8px;
+
+}
+
+.preview-info {
+
+    display: grid;
+
+    grid-template-columns:
+        repeat(2,1fr);
+
+    gap: 7px;
+
+    margin-top: 15px;
+
+}
+
+.preview-info div {
+
+    padding: 9px;
+
+    border-radius: 8px;
+
+    background: #131821;
+
+}
+
+.preview-info strong {
+
+    display: block;
+
+    font-size: 10px;
+
+    margin-bottom: 3px;
+
+}
+
+.preview-info span {
+
+    color: var(--muted);
+
+    font-size: 8px;
+
+}
+
+
+/* =====================================================
+   TOAST
+===================================================== */
+
+.toast {
+
+    position: fixed;
+
+    right: 25px;
+    bottom: 25px;
+
+    max-width: 350px;
+
+    padding:
+        13px 17px;
+
+    border-radius: 10px;
+
+    background:
+        #181e28;
+
+    border:
+        1px solid var(--border);
+
+    color: white;
+
+    font-size: 10px;
+
+    transform:
+        translateY(100px);
+
+    opacity: 0;
+
+    transition: .3s;
+
+    z-index: 9999;
+
+}
+
+.toast.show {
+
+    transform:
+        translateY(0);
+
+    opacity: 1;
+
+}
+
+
+/* =====================================================
+   MOBILE
+===================================================== */
+
+@media(max-width:1000px) {
+
+    .layout {
+        grid-template-columns: 1fr;
+    }
+
+    .sidebar {
+        display: none;
+    }
+
+    .main {
+        padding:
+            30px 0 60px;
+    }
+
+}
+
+@media(max-width:800px) {
+
+    .stats {
+        grid-template-columns:
+            repeat(2,1fr);
+    }
+
+    .form-layout {
+        grid-template-columns: 1fr;
+    }
+
+    .preview-box {
+        position: static;
+    }
+
+}
+
+@media(max-width:650px) {
+
+    .form-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .field.full {
+        grid-column: auto;
+    }
+
+    .app-row {
+        grid-template-columns:
+            48px 1fr;
+    }
+
+    .app-row-icon {
+        width: 48px;
+        height: 48px;
+    }
+
+    .app-actions {
+        grid-column: 1 / -1;
+        width: 100%;
+    }
+
+    .app-actions .icon-btn {
+        flex: 1;
+    }
+
+    .toolbar {
+        flex-direction: column;
+        align-items: stretch;
+    }
+
+}
+
+@media(max-width:500px) {
+
+    .stats {
+        grid-template-columns: 1fr;
+    }
+
+    .panel {
+        padding: 16px;
+    }
+
+    .actions {
+        flex-direction: column;
+    }
+
+    .btn {
+        width: 100%;
+    }
+
+    .header-btn span {
+        display: none;
+    }
+
+}
+
+</style>
+
+</head>
+
+
+<body>
+
+
+<!-- =====================================================
+     HEADER
+===================================================== -->
+
+<header class="header">
+
+<div class="header-inner">
+
+<div class="logo">
+
+<div class="logo-icon">
+<i class="fa-brands fa-android"></i>
+</div>
+
+APK<span>City</span>
+
+<div class="admin-label">
+ADMIN
+</div>
+
+</div>
+
+
+<div class="header-right">
+
+<button
+    class="header-btn"
+    onclick="window.open('../index.html','_blank')"
+>
+
+<i class="fa-solid fa-globe"></i>
+
+<span>Website</span>
+
+</button>
+
+
+<button
+    class="header-btn logout-btn"
+    id="logoutBtn"
+>
+
+<i class="fa-solid fa-right-from-bracket"></i>
+
+<span>Logout</span>
+
+</button>
+
+</div>
+
+</div>
+
+</header>
+
+
+
+<div class="layout">
+
+
+<!-- =====================================================
+     SIDEBAR
+===================================================== -->
+
+<aside class="sidebar">
+
+<div class="sidebar-title">
+Management
+</div>
+
+
+<button
+    class="side-link"
+    id="showDashboardBtn"
+>
+
+<i class="fa-solid fa-layer-group"></i>
+
+Applications
+
+</button>
+
+
+<button
+    class="side-link active"
+    id="showAddBtn"
+>
+
+<i class="fa-solid fa-plus"></i>
+
+Add Application
+
+</button>
+
+
+<div class="sidebar-title">
+Website
+</div>
+
+
+<button
+    class="side-link"
+    onclick="window.open('../index.html','_blank')"
+>
+
+<i class="fa-solid fa-globe"></i>
+
+Open APKCity
+
+</button>
+
+</aside>
+
+
+
+<!-- =====================================================
+     MAIN
+===================================================== -->
+
+<main class="main">
+
+
+<div class="page-title">
+
+<h1 id="pageHeading">
+Applications
+</h1>
+
+<p id="pageDescription">
+Manage all applications published on APKCity.
+</p>
+
+</div>
+
+
+
+<!-- =====================================================
+     STATS
+===================================================== -->
+
+<div class="stats">
+
+<div class="stat">
+
+<div class="stat-top">
+
+<div class="stat-label">
+Total Apps
+</div>
+
+<div class="stat-icon">
+<i class="fa-solid fa-mobile-screen-button"></i>
+</div>
+
+</div>
+
+<div
+    class="stat-value"
+    id="totalApps"
+>
+0
+</div>
+
+</div>
+
+
+<div class="stat">
+
+<div class="stat-top">
+
+<div class="stat-label">
+Featured
+</div>
+
+<div class="stat-icon">
+<i class="fa-solid fa-star"></i>
+</div>
+
+</div>
+
+<div
+    class="stat-value"
+    id="featuredApps"
+>
+0
+</div>
+
+</div>
+
+
+<div class="stat">
+
+<div class="stat-top">
+
+<div class="stat-label">
+Verified
+</div>
+
+<div class="stat-icon">
+<i class="fa-solid fa-circle-check"></i>
+</div>
+
+</div>
+
+<div
+    class="stat-value"
+    id="verifiedApps"
+>
+0
+</div>
+
+</div>
+
+
+<div class="stat">
+
+<div class="stat-top">
+
+<div class="stat-label">
+Categories
+</div>
+
+<div class="stat-icon">
+<i class="fa-solid fa-grid-2"></i>
+</div>
+
+</div>
+
+<div
+    class="stat-value"
+    id="categoryCount"
+>
+0
+</div>
+
+</div>
+
+</div>
+
+
+
+<!-- =====================================================
+     APP MANAGEMENT
+===================================================== -->
+
+<section
+    class="management active"
+    id="management"
+>
+
+
+<div class="toolbar">
+
+<div class="search-box">
+
+<i class="fa-solid fa-magnifying-glass"></i>
+
+<input
+    id="appSearch"
+    type="search"
+    placeholder="Search applications..."
+>
+
+</div>
+
+
+<button
+    class="btn btn-primary"
+    id="toolbarAddBtn"
+    style="height:43px;"
+>
+
+<i class="fa-solid fa-plus"></i>
+
+Add App
+
+</button>
+
+</div>
+
+
+<div
+    class="apps-list"
+    id="appsList"
+>
+
+<div class="empty-state">
+
+<i class="fa-solid fa-spinner fa-spin"></i>
+
+<strong>
+Loading applications...
+</strong>
+
+<span>
+Please wait while Firestore loads your apps.
+</span>
+
+</div>
+
+</div>
+
+</section>
+
+
+
+<!-- =====================================================
+     FORM MANAGEMENT
+===================================================== -->
+
+<section
+    class="form-management hidden"
+    id="formManagement"
+>
+
+
+<div class="form-layout">
+
+
+<div>
+
+
+<!-- BASIC INFORMATION -->
+
+<section class="panel">
+
+<div class="panel-title">
+
+<i class="fa-solid fa-circle-info"></i>
+
+<span id="formTitle">
+Basic Information
+</span>
+
+</div>
+
+
+<div class="form-grid">
+
+
+<div class="field">
+
+<label>
+App Name
+</label>
+
+<input
+    id="appName"
+    type="text"
+    placeholder="WhatsApp"
+>
+
+</div>
+
+
+<div class="field">
+
+<label>
+Developer
+</label>
+
+<input
+    id="developer"
+    type="text"
+    placeholder="WhatsApp LLC"
+>
+
+</div>
+
+
+<div class="field">
+
+<label>
+Category
+</label>
+
+<select id="category">
+
+<option value="">
+Select Category
+</option>
+
+<option>Apps</option>
+<option>Games</option>
+<option>Social</option>
+<option>Communication</option>
+<option>Entertainment</option>
+<option>Music & Audio</option>
+<option>Video Players</option>
+<option>Photography</option>
+<option>Tools</option>
+<option>Productivity</option>
+<option>Education</option>
+<option>Finance</option>
+<option>Lifestyle</option>
+<option>Other</option>
+
+</select>
+
+</div>
+
+
+<div class="field">
+
+<label>
+nothing
+</label>
+
+<input
+    id="version"
+    type="text"
+    placeholder="--------------------"
+>
+
+</div>
+
+
+<div class="field">
+
+<label>
+nothing
+</label>
+
+<input
+    id="size"
+    type="text"
+    placeholder="---------------------"
+>
+
+</div>
+
+
+<div class="field">
+
+<label>
+nothing
+</label>
+
+<input
+    id="android"
+    type="text"
+    placeholder="----------------------"
+>
+
+</div>
+
+
+<div class="field">
+
+<label>
+Rating
+</label>
+
+<input
+    id="rating"
+    type="number"
+    min="0"
+    max="5"
+    step="0.1"
+    value="4.5"
+>
+
+</div>
+
+
+<div class="field">
+
+<label>
+pc/android
+</label>
+
+<input
+    id="downloads"
+    type="text"
+    placeholder="pc | android"
+>
+
+</div>
+
+</div>
+
+</section>
+
+
+
+<!-- SEARCH TAGS -->
+
+<section class="panel">
+
+<div class="panel-title">
+
+<i class="fa-solid fa-tags"></i>
+
+Search Tags
+
+</div>
+
+
+<div class="field">
+
+<label>
+Search Keywords
+</label>
+
+<input
+    id="tags"
+    type="text"
+    placeholder="whatsapp, chat, messaging, calling"
+>
+
+<small style="
+color:#626978;
+font-size:9px;
+">
+Separate keywords with commas.
+</small>
+
+</div>
+
+</section>
+
+
+
+<!-- GITHUB FILES -->
+
+<section class="panel">
+
+<div class="panel-title">
+
+<i class="fa-solid fa-link"></i>
+
+GitHub Files
+
+</div>
+
+
+<div class="form-grid">
+
+
+<div class="field full">
+
+<label>
+App Picture
+</label>
+
+<input
+    id="icon"
+    type="text"
+    placeholder="https://apkcity.github.io/assets/apps/whatsapp.png"
+>
+
+</div>
+
+
+<div class="field full">
+
+<label>
+APK File
+</label>
+
+<input
+    id="apk"
+    type="text"
+    placeholder="https://apkcity.github.io/apks/whatsapp.apk"
+>
+
+</div>
+
+</div>
+
+
+<br>
+
+
+<div class="field">
+
+<label>
+Screenshots
+<span>
+Maximum 3
+</span>
+</label>
+
+
+<div class="screenshot-list">
+
+
+<div class="screenshot-field">
+
+<div class="shot-number">
+1
+</div>
+
+<input
+    id="screenshot1"
+    type="text"
+    placeholder="https://apkcity.github.io/assets/screenshots/app/1.jpg"
+>
+
+</div>
+
+
+<div class="screenshot-field">
+
+<div class="shot-number">
+2
+</div>
+
+<input
+    id="screenshot2"
+    type="text"
+    placeholder="https://apkcity.github.io/assets/screenshots/app/2.jpg"
+>
+
+</div>
+
+
+<div class="screenshot-field">
+
+<div class="shot-number">
+3
+</div>
+
+<input
+    id="screenshot3"
+    type="text"
+    placeholder="https://apkcity.github.io/assets/screenshots/app/3.jpg"
+>
+
+</div>
+
+
+</div>
+
+</div>
+
+</section>
+
+
+
+<!-- DESCRIPTION -->
+
+<section class="panel">
+
+<div class="panel-title">
+
+<i class="fa-solid fa-align-left"></i>
+
+Description
+
+</div>
+
+
+<textarea
+    id="description"
+    placeholder="Write the application description..."
+></textarea>
+
+</section>
+
+
+
+<!-- WHAT'S NEW -->
+
+<section class="panel">
+
+<div class="panel-title">
+
+<i class="fa-solid fa-wand-magic-sparkles"></i>
+
+What's New
+
+</div>
+
+
+<textarea
+    id="whatsNew"
+    placeholder="New features&#10;Performance improvements&#10;Bug fixes"
+></textarea>
+
+</section>
+
+
+
+<!-- OPTIONS -->
+
+<section class="panel">
+
+<div class="panel-title">
+
+<i class="fa-solid fa-sliders"></i>
+
+Options
+
+</div>
+
+<div class="field" style="margin-bottom:20px;">
+
+<label>
+    Homepage Section
+</label>
+
+<select id="homepageSection">
+
+    <option value="popular">
+        Popular Apps
+    </option>
+
+    <option value="trending">
+        Trending Games
+    </option>
+
+</select>
+
+<small style="
+color:#626978;
+font-size:9px;
+">
+Choose where this app should appear on the APKCity homepage.
+</small>
+
+</div>
+
+
+<div class="checks">
+
+
+<label class="check">
+
+<input
+    id="featured"
+    type="checkbox"
+>
+
+Featured App
+
+</label>
+
+
+<label class="check">
+
+<input
+    id="verified"
+    type="checkbox"
+    checked
+>
+
+APKCity Verified
+
+</label>
+
+
+</div>
+
+</section>
+
+
+
+<!-- BUTTONS -->
+
+<div class="actions">
+
+
+<button
+    class="btn btn-primary"
+    id="saveAppBtn"
+>
+
+<i class="fa-solid fa-plus"></i>
+
+<span id="saveAppText">
+ADD APP
+</span>
+
+</button>
+
+
+<button
+    class="btn btn-secondary"
+    id="cancelBtn"
+>
+
+<i class="fa-solid fa-xmark"></i>
+
+CANCEL
+
+</button>
+
+
+<button
+    class="btn btn-danger"
+    id="resetBtn"
+>
+
+<i class="fa-solid fa-rotate-left"></i>
+
+RESET
+
+</button>
+
+
+</div>
+
+
+</div>
+
+
+
+<!-- PREVIEW -->
+
+<aside class="preview-box">
+
+<div class="preview-label">
+Live Preview
+</div>
+
+
+<div class="app-preview">
+
+
+<div class="preview-top">
+
+
+<img
+    id="previewIcon"
+    class="preview-icon"
+    alt="App"
+>
+
+
+<div>
+
+<div
+    id="previewName"
+    class="preview-name"
+>
+App Name
+</div>
+
+
+<div
+    id="previewDeveloper"
+    class="preview-developer"
+>
+Developer
+</div>
+
+
+<div
+    id="previewCategory"
+    class="preview-category"
+>
+Category
+</div>
+
+</div>
+
+</div>
+
+
+<div class="preview-info">
+
+
+<div>
+
+<strong id="previewVersion">
+—
+</strong>
+
+<span>
+Version
+</span>
+
+</div>
+
+
+<div>
+
+<strong id="previewSize">
+—
+</strong>
+
+<span>
+Size
+</span>
+
+</div>
+
+
+<div>
+
+<strong id="previewRating">
+—
+</strong>
+
+<span>
+Rating
+</span>
+
+</div>
+
+
+<div>
+
+<strong id="previewAndroid">
+—
+</strong>
+
+<span>
+Android
+</span>
+
+</div>
+
+
+</div>
+
+</div>
+
+</aside>
+
+
+</div>
+
+</section>
+
+
+</main>
+
+</div>
+
+
+
+<div
+    class="toast"
+    id="toast"
+></div>
+
+
+
+<!-- =====================================================
+     FIREBASE
+===================================================== -->
+
+<script type="module">
+
+import {
+    initializeApp
+} from "https://www.gstatic.com/firebasejs/12.18.0/firebase-app.js";
+
+import {
+    getAuth,
+    onAuthStateChanged,
+    signOut
+} from "https://www.gstatic.com/firebasejs/12.18.0/firebase-auth.js";
+
+import {
+    getFirestore,
+    collection,
+    addDoc,
+    updateDoc,
+    deleteDoc,
+    doc,
+    serverTimestamp,
+    onSnapshot,
+    query,
+    orderBy
+} from "https://www.gstatic.com/firebasejs/12.18.0/firebase-firestore.js";
+
+
+/* =====================================================
+   FIREBASE CONFIG
+===================================================== */
+
+const firebaseConfig = {
+
+    apiKey:
+        "AIzaSyABU60kwZik2S1_8Dx7sfT6HfGBIr935Bw",
+
+    authDomain:
+        "apkcity-30fa1.firebaseapp.com",
+
+    projectId:
+        "apkcity-30fa1",
+
+    storageBucket:
+        "apkcity-30fa1.firebasestorage.app",
+
+    messagingSenderId:
+        "965202080311",
+
+    appId:
+        "1:965202080311:web:6419bf702de3dcf024c5b2"
+
+};
+
+
+const app =
+    initializeApp(firebaseConfig);
+
+const auth =
+    getAuth(app);
+
+const db =
+    getFirestore(app);
+
+
+/* =====================================================
+   STATE
+===================================================== */
+
+let currentUser = null;
+
+let allApps = [];
+
+let editingAppId = null;
+
+let unsubscribeApps = null;
+
+
+/* =====================================================
+   ELEMENTS
+===================================================== */
+
+const management =
+    document.getElementById("management");
+
+const formManagement =
+    document.getElementById("formManagement");
+
+const appsList =
+    document.getElementById("appsList");
+
+const appSearch =
+    document.getElementById("appSearch");
+
+const pageHeading =
+    document.getElementById("pageHeading");
+
+const pageDescription =
+    document.getElementById("pageDescription");
+
+const saveAppBtn =
+    document.getElementById("saveAppBtn");
+
+const saveAppText =
+    document.getElementById("saveAppText");
+
+
+/* =====================================================
+   AUTH PROTECTION
+===================================================== */
+
+onAuthStateChanged(
+    auth,
+    user => {
+
+        if (!user) {
+
+            window.location.href =
+                "admin/login.html";
+
+            return;
+
+        }
+
+        currentUser = user;
+
+        console.log(
+            "Admin authenticated:",
+            user.email
+        );
+
+        startAppsListener();
+
+    }
+);
+
+
+/* =====================================================
+   FIRESTORE REAL-TIME LISTENER
+===================================================== */
+
+function startAppsListener() {
+
+    if (unsubscribeApps) {
+        unsubscribeApps();
+    }
+
+    const appsRef =
+        collection(db, "apps");
+
+    const appsQuery =
+        query(
+            appsRef,
+            orderBy(
+                "createdAt",
+                "desc"
+            )
+        );
+
+    unsubscribeApps =
+        onSnapshot(
+            appsQuery,
+            snapshot => {
+
+                allApps =
+                    snapshot.docs.map(
+                        item => ({
+                            id: item.id,
+                            ...item.data()
+                        })
+                    );
+
+                updateStats();
+
+                renderApps();
+
+            },
+
+            error => {
+
+                console.error(
+                    "Apps listener error:",
+                    error
+                );
+
+                showToast(
+                    "Unable to load apps: " +
+                    error.message
+                );
+
+            }
+        );
+
+}
+
+
+/* =====================================================
+   STATS
+===================================================== */
+
+function updateStats() {
+
+    document.getElementById(
+        "totalApps"
+    ).textContent =
+        allApps.length;
+
+
+    document.getElementById(
+        "featuredApps"
+    ).textContent =
+        allApps.filter(
+            app => app.featured === true
+        ).length;
+
+
+    document.getElementById(
+        "verifiedApps"
+    ).textContent =
+        allApps.filter(
+            app => app.verified === true
+        ).length;
+
+
+    const categories =
+        new Set(
+            allApps
+                .map(
+                    app => app.category
+                )
+                .filter(Boolean)
+        );
+
+    document.getElementById(
+        "categoryCount"
+    ).textContent =
+        categories.size;
+
+}
+
+
+/* =====================================================
+   RENDER APPS
+===================================================== */
+
+function renderApps() {
+
+    const search =
+        appSearch.value
+            .trim()
+            .toLowerCase();
+
+
+    const filtered =
+        allApps.filter(
+            app => {
+
+                if (!search) {
+                    return true;
+                }
+
+                const searchable = [
+
+                    app.name,
+
+                    app.developer,
+
+                    app.category,
+
+                    ...(app.tags || [])
+
+                ]
+                    .filter(Boolean)
+                    .join(" ")
+                    .toLowerCase();
+
+                return searchable.includes(search);
+
+            }
+        );
+
+
+    if (!filtered.length) {
+
+        appsList.innerHTML = `
+
+            <div class="empty-state">
+
+                <i class="fa-solid fa-box-open"></i>
+
+                <strong>
+                    ${
+                        search
+                            ? "No matching applications"
+                            : "No applications yet"
+                    }
+                </strong>
+
+                <span>
+                    ${
+                        search
+                            ? "Try another search."
+                            : "Add your first APK using the Add App button."
+                    }
+                </span>
+
+            </div>
+
+        `;
+
+        return;
+
+    }
+
+
+    appsList.innerHTML =
+        filtered
+            .map(
+                app => createAppRow(app)
+            )
+            .join("");
+
+
+    document
+        .querySelectorAll(
+            "[data-edit]"
+        )
+        .forEach(
+            button => {
+
+                button.addEventListener(
+                    "click",
+                    () => {
+
+                        editApp(
+                            button.dataset.edit
+                        );
+
+                    }
+                );
+
+            }
+        );
+
+
+    document
+        .querySelectorAll(
+            "[data-delete]"
+        )
+        .forEach(
+            button => {
+
+                button.addEventListener(
+                    "click",
+                    () => {
+
+                        deleteApp(
+                            button.dataset.delete
+                        );
+
+                    }
+                );
+
+            }
+        );
+
+}
+
+
+/* =====================================================
+   APP ROW
+===================================================== */
+
+function createAppRow(app) {
+
+    const tags =
+        Array.isArray(app.tags)
+            ? app.tags.join(", ")
+            : "";
+
+
+    const icon =
+        app.icon ||
+        "";
+
+
+    return `
+
+        <div class="app-row">
+
+            <img
+                class="app-row-icon"
+                src="${escapeHtml(icon)}"
+                alt=""
+                onerror="this.style.opacity='.25'"
+            >
+
+
+            <div class="app-row-info">
+
+                <div class="app-row-name">
+
+                    ${escapeHtml(
+                        app.name || "Unnamed App"
+                    )}
+
+                    ${
+                        app.verified
+                            ? `
+                                <i
+                                    class="fa-solid fa-circle-check verified"
+                                    title="Verified"
+                                ></i>
+                              `
+                            : ""
+                    }
+
+                </div>
+
+
+                <div class="app-row-meta">
+
+                    ${
+                        app.category
+                            ? `
+                                <span class="meta">
+                                    ${escapeHtml(app.category)}
+                                </span>
+                              `
+                            : ""
+                    }
+
+                    ${
+                        app.version
+                            ? `
+                                <span class="meta">
+                                    v${escapeHtml(app.version)}
+                                </span>
+                              `
+                            : ""
+                    }
+
+                    ${
+                        app.size
+                            ? `
+                                <span class="meta">
+                                    ${escapeHtml(app.size)}
+                                </span>
+                              `
+                            : ""
+                    }
+
+                    ${
+                        app.featured
+                            ? `
+                                <span class="meta">
+                                    ★ Featured
+                                </span>
+                              `
+                            : ""
+                    }
+
+                </div>
+
+
+                <div class="app-row-tags">
+
+                    ${
+                        tags
+                            ? "Tags: " + escapeHtml(tags)
+                            : "No search tags"
+                    }
+
+                </div>
+
+            </div>
+
+
+            <div class="app-actions">
+
+                <button
+                    class="icon-btn"
+                    data-edit="${app.id}"
+                    title="Edit App"
+                >
+
+                    <i class="fa-solid fa-pen"></i>
+
+                </button>
+
+
+                <button
+                    class="icon-btn delete"
+                    data-delete="${app.id}"
+                    title="Delete App"
+                >
+
+                    <i class="fa-solid fa-trash"></i>
+
+                </button>
+
+            </div>
+
+        </div>
+
+    `;
+
+}
+
+
+/* =====================================================
+   SEARCH
+===================================================== */
+
+appSearch.addEventListener(
+    "input",
+    renderApps
+);
+
+
+/* =====================================================
+   SHOW APPLICATIONS
+===================================================== */
+
+function showApplications() {
+
+    management.classList.add(
+        "active"
+    );
+
+    formManagement.classList.add(
+        "hidden"
+    );
+
+    pageHeading.textContent =
+        "Applications";
+
+    pageDescription.textContent =
+        "Manage all applications published on APKCity.";
+
+    document
+        .getElementById(
+            "showDashboardBtn"
+        )
+        .classList.add("active");
+
+    document
+        .getElementById(
+            "showAddBtn"
+        )
+        .classList.remove("active");
+
+    editingAppId = null;
+
+}
+
+
+/* =====================================================
+   SHOW ADD FORM
+===================================================== */
+
+function showAddForm() {
+
+    management.classList.remove(
+        "active"
+    );
+
+    formManagement.classList.remove(
+        "hidden"
+    );
+
+    pageHeading.textContent =
+        "Add Application";
+
+    pageDescription.textContent =
+        "Add a new application to APKCity.";
+
+    document
+        .getElementById(
+            "showAddBtn"
+        )
+        .classList.add("active");
+
+    document
+        .getElementById(
+            "showDashboardBtn"
+        )
+        .classList.remove("active");
+
+    editingAppId = null;
+
+    clearForm(false);
+
+    document
+        .getElementById(
+            "formTitle"
+        )
+        .textContent =
+            "Basic Information";
+
+    saveAppText.textContent =
+        "ADD APP";
+
+    saveAppBtn.innerHTML = `
+
+        <i class="fa-solid fa-plus"></i>
+
+        <span id="saveAppText">
+            ADD APP
+        </span>
+
+    `;
+
+}
+
+
+/* =====================================================
+   SIDEBAR EVENTS
+===================================================== */
+
+document
+    .getElementById(
+        "showDashboardBtn"
+    )
+    .addEventListener(
+        "click",
+        showApplications
+    );
+
+
+document
+    .getElementById(
+        "showAddBtn"
+    )
+    .addEventListener(
+        "click",
+        showAddForm
+    );
+
+
+document
+    .getElementById(
+        "toolbarAddBtn"
+    )
+    .addEventListener(
+        "click",
+        showAddForm
+    );
+
+
+/* =====================================================
+   EDIT APP
+===================================================== */
+
+function editApp(id) {
+
+    const app =
+        allApps.find(
+            item => item.id === id
+        );
+
+
+    if (!app) {
+
+        showToast(
+            "Application not found."
+        );
+
+        return;
+
+    }
+
+
+    editingAppId = id;
+
+
+    management.classList.remove(
+        "active"
+    );
+
+    formManagement.classList.remove(
+        "hidden"
+    );
+
+
+    pageHeading.textContent =
+        "Edit Application";
+
+    pageDescription.textContent =
+        "Update the selected application.";
+
+
+    document
+        .getElementById(
+            "formTitle"
+        )
+        .textContent =
+            "Edit Application";
+
+
+    saveAppBtn.innerHTML = `
+
+        <i class="fa-solid fa-floppy-disk"></i>
+
+        <span>
+            UPDATE APP
+        </span>
+
+    `;
+
+
+    setValue(
+        "appName",
+        app.name
+    );
+
+    setValue(
+        "developer",
+        app.developer
+    );
+
+    setValue(
+        "category",
+        app.category
+    );
+
+    document
+    .getElementById("homepageSection")
+    .value =
+        app.homepageSection || "popular";
+
+    setValue(
+        "version",
+        app.version
+    );
+
+    setValue(
+        "size",
+        app.size
+    );
+
+    setValue(
+        "android",
+        app.android
+    );
+
+    setValue(
+        "rating",
+        app.rating ?? 4.5
+    );
+
+    setValue(
+        "downloads",
+        app.downloads
+    );
+
+    setValue(
+        "icon",
+        app.icon
+    );
+
+    setValue(
+        "apk",
+        app.apk
+    );
+
+    setValue(
+        "screenshot1",
+        app.screenshots?.[0] || ""
+    );
+
+    setValue(
+        "screenshot2",
+        app.screenshots?.[1] || ""
+    );
+
+    setValue(
+        "screenshot3",
+        app.screenshots?.[2] || ""
+    );
+
+    setValue(
+        "description",
+        app.description
+    );
+
+    setValue(
+        "whatsNew",
+        app.whatsNew
+    );
+
+
+    document
+        .getElementById(
+            "tags"
+        )
+        .value =
+            Array.isArray(app.tags)
+                ? app.tags.join(", ")
+                : "";
+
+
+    document
+        .getElementById(
+            "featured"
+        )
+        .checked =
+            app.featured === true;
+
+
+    document
+        .getElementById(
+            "verified"
+        )
+        .checked =
+            app.verified !== false;
+
+
+    updatePreview();
+
+}
+
+
+/* =====================================================
+   SAVE / UPDATE
+===================================================== */
+
+saveAppBtn.addEventListener(
+    "click",
+    saveApp
+);
+
+
+async function saveApp() {
+
+    if (!currentUser) {
+
+        showToast(
+            "You are not authenticated."
+        );
+
+        return;
+
+    }
+
+
+    const data =
+        collectFormData();
+
+
+    if (!validateData(data)) {
+        return;
+    }
+
+
+    saveAppBtn.disabled =
+        true;
+
+
+    saveAppBtn.innerHTML = `
+
+        <i class="fa-solid fa-spinner fa-spin"></i>
+
+        <span>
+            ${
+                editingAppId
+                    ? "UPDATING..."
+                    : "ADDING..."
+            }
+        </span>
+
+    `;
+
+
+    try {
+
+        if (editingAppId) {
+
+            await updateDoc(
+                doc(
+                    db,
+                    "apps",
+                    editingAppId
+                ),
+                {
+                    ...data,
+                    updatedAt:
+                        serverTimestamp()
+                }
+            );
+
+
+            showToast(
+                "✓ App updated successfully!"
+            );
+
+        } else {
+
+            await addDoc(
+                collection(
+                    db,
+                    "apps"
+                ),
+                {
+                    ...data,
+
+                    createdAt:
+                        serverTimestamp(),
+
+                    updatedAt:
+                        serverTimestamp()
+                }
+            );
+
+
+            showToast(
+                "✓ App added successfully!"
+            );
+
+        }
+
+
+        clearForm(false);
+
+        showApplications();
+
+
+    } catch (error) {
+
+        console.error(
+            "Firestore error:",
+            error
+        );
+
+        showToast(
+            "Failed: " +
+            error.message
+        );
+
+    } finally {
+
+        saveAppBtn.disabled =
+            false;
+
+        saveAppBtn.innerHTML = editingAppId
+            ? `
+                <i class="fa-solid fa-floppy-disk"></i>
+                <span>UPDATE APP</span>
+              `
+            : `
+                <i class="fa-solid fa-plus"></i>
+                <span>ADD APP</span>
+              `;
+
+    }
+
+}
+
+
+/* =====================================================
+   COLLECT FORM
+===================================================== */
+
+function collectFormData() {
+
+    const get =
+        id =>
+            document
+                .getElementById(id)
+                .value
+                .trim();
+
+
+    const tags =
+        get("tags")
+            .split(",")
+            .map(
+                tag =>
+                    tag.trim()
+            )
+            .filter(Boolean);
+
+
+    const screenshots = [
+
+        get("screenshot1"),
+        get("screenshot2"),
+        get("screenshot3")
+
+    ].filter(Boolean);
+
+
+   return {
+
+    name:
+        get("appName"),
+
+    homepageSection:
+        document
+            .getElementById("homepageSection")
+            .value,
+
+        developer:
+            get("developer"),
+
+        category:
+            get("category"),
+
+        version:
+            get("version"),
+
+        size:
+            get("size"),
+
+        android:
+            get("android"),
+
+        rating:
+            Number(
+                get("rating")
+            ) || 0,
+
+        downloads:
+            get("downloads"),
+
+        icon:
+            get("icon"),
+
+        apk:
+            get("apk"),
+
+        screenshots:
+            screenshots,
+
+        tags:
+            tags,
+
+        description:
+            get("description"),
+
+        whatsNew:
+            get("whatsNew"),
+
+        featured:
+            document
+                .getElementById(
+                    "featured"
+                )
+                .checked,
+
+        verified:
+            document
+                .getElementById(
+                    "verified"
+                )
+                .checked
+
+    };
+
+}
+
+
+/* =====================================================
+   VALIDATION
+===================================================== */
+
+function validateData(data) {
+
+    if (!data.name) {
+
+        showToast(
+            "Please enter the app name."
+        );
+
+        return false;
+
+    }
+
+
+    if (!data.developer) {
+
+        showToast(
+            "Please enter the developer."
+        );
+
+        return false;
+
+    }
+
+
+    if (!data.category) {
+
+        showToast(
+            "Please select a category."
+        );
+
+        return false;
+
+    }
+
+
+    if (!data.icon) {
+
+        showToast(
+            "Please enter the app picture URL."
+        );
+
+        return false;
+
+    }
+
+
+    if (!data.apk) {
+
+        showToast(
+            "Please enter the APK URL."
+        );
+
+        return false;
+
+    }
+
+
+    if (
+        data.rating < 0 ||
+        data.rating > 5
+    ) {
+
+        showToast(
+            "Rating must be between 0 and 5."
+        );
+
+        return false;
+
+    }
+
+
+    if (
+        data.screenshots.length > 3
+    ) {
+
+        showToast(
+            "Maximum 3 screenshots allowed."
+        );
+
+        return false;
+
+    }
+
+
+    return true;
+
+}
+
+
+/* =====================================================
+   DELETE APP
+===================================================== */
+
+async function deleteApp(id) {
+
+    const app =
+        allApps.find(
+            item => item.id === id
+        );
+
+
+    if (!app) {
+        return;
+    }
+
+
+    const confirmed =
+        confirm(
+            `Delete "${app.name}"?\n\nThis will permanently remove the app from Firestore and from the APKCity website.`
+        );
+
+
+    if (!confirmed) {
+        return;
+    }
+
+
+    try {
+
+        await deleteDoc(
+            doc(
+                db,
+                "apps",
+                id
+            )
+        );
+
+
+        showToast(
+            "✓ App deleted successfully!"
+        );
+
+
+    } catch (error) {
+
+        console.error(
+            "Delete error:",
+            error
+        );
+
+        showToast(
+            "Failed to delete: " +
+            error.message
+        );
+
+    }
+
+}
+
+
+/* =====================================================
+   CLEAR FORM
+===================================================== */
+
+function clearForm(confirmFirst = true) {
+
+    if (
+        confirmFirst &&
+        !confirm(
+            "Clear all fields?"
+        )
+    ) {
+
+        return;
+
+    }
+
+
+    document
+        .querySelectorAll(
+            "#formManagement input[type='text'], #formManagement input[type='number'], #formManagement textarea"
+        )
+        .forEach(
+            element => {
+
+                element.value = "";
+
+            }
+        );
+
+
+    document
+        .getElementById(
+            "category"
+        )
+        .value = "";
+
+    document
+    .getElementById("homepageSection")
+    .value = "popular";
+
+
+    document
+        .getElementById(
+            "rating"
+        )
+        .value = "4.5";
+
+
+    document
+        .getElementById(
+            "featured"
+        )
+        .checked = false;
+
+
+    document
+        .getElementById(
+            "verified"
+        )
+        .checked = true;
+
+
+    updatePreview();
+
+}
+
+
+document
+    .getElementById(
+        "resetBtn"
+    )
+    .addEventListener(
+        "click",
+        () => clearForm(true)
+    );
+
+
+document
+    .getElementById(
+        "cancelBtn"
+    )
+    .addEventListener(
+        "click",
+        showApplications
+    );
+
+
+/* =====================================================
+   SET VALUE
+===================================================== */
+
+function setValue(id, value) {
+
+    document
+        .getElementById(id)
+        .value =
+            value ?? "";
+
+}
+
+
+/* =====================================================
+   LIVE PREVIEW
+===================================================== */
+
+function updatePreview() {
+
+    const get =
+        id =>
+            document
+                .getElementById(id)
+                .value;
+
+
+    document
+        .getElementById(
+            "previewName"
+        )
+        .textContent =
+            get("appName") ||
+            "App Name";
+
+
+    document
+        .getElementById(
+            "previewDeveloper"
+        )
+        .textContent =
+            get("developer") ||
+            "Developer";
+
+
+    document
+        .getElementById(
+            "previewCategory"
+        )
+        .textContent =
+            get("category") ||
+            "Category";
+
+
+    document
+        .getElementById(
+            "previewVersion"
+        )
+        .textContent =
+            get("version") ||
+            "—";
+
+
+    document
+        .getElementById(
+            "previewSize"
+        )
+        .textContent =
+            get("size") ||
+            "—";
+
+
+    document
+        .getElementById(
+            "previewAndroid"
+        )
+        .textContent =
+            get("android") ||
+            "—";
+
+
+    document
+        .getElementById(
+            "previewRating"
+        )
+        .textContent =
+            get("rating")
+                ? "★ " + get("rating")
+                : "—";
+
+
+    const previewIcon =
+        document.getElementById(
+            "previewIcon"
+        );
+
+
+    if (get("icon")) {
+
+        previewIcon.src =
+            get("icon");
+
+    } else {
+
+        previewIcon.removeAttribute(
+            "src"
+        );
+
+    }
+
+}
+
+
+[
+    "appName",
+    "developer",
+    "category",
+    "version",
+    "size",
+    "android",
+    "rating",
+    "icon"
+
+].forEach(
+    id => {
+
+        document
+            .getElementById(id)
+            .addEventListener(
+                "input",
+                updatePreview
+            );
+
+        document
+            .getElementById(id)
+            .addEventListener(
+                "change",
+                updatePreview
+            );
+
+    }
+);
+
+
+/* =====================================================
+   LOGOUT
+===================================================== */
+
+document
+    .getElementById(
+        "logoutBtn"
+    )
+    .addEventListener(
+        "click",
+        async () => {
+
+            const confirmed =
+                confirm(
+                    "Log out of APKCity Admin?"
+                );
+
+
+            if (!confirmed) {
+                return;
+            }
+
+
+            try {
+
+                await signOut(auth);
+
+                window.location.href =
+                    "admin/login.html";
+
+            } catch (error) {
+
+                console.error(error);
+
+                showToast(
+                    "Logout failed."
+                );
+
+            }
+
+        }
+    );
+
+
+/* =====================================================
+   ESCAPE HTML
+===================================================== */
+
+function escapeHtml(value) {
+
+    return String(
+        value ?? ""
+    )
+        .replace(
+            /&/g,
+            "&amp;"
+        )
+        .replace(
+            /</g,
+            "&lt;"
+        )
+        .replace(
+            />/g,
+            "&gt;"
+        )
+        .replace(
+            /"/g,
+            "&quot;"
+        )
+        .replace(
+            /'/g,
+            "&#039;"
+        );
+
+}
+
+
+/* =====================================================
+   TOAST
+===================================================== */
+
+let toastTimer = null;
+
+function showToast(message) {
+
+    const toast =
+        document.getElementById(
+            "toast"
+        );
+
+
+    toast.textContent =
+        message;
+
+
+    toast.classList.add(
+        "show"
+    );
+
+
+    clearTimeout(
+        toastTimer
+    );
+
+
+    toastTimer =
+        setTimeout(
+            () => {
+
+                toast.classList.remove(
+                    "show"
+                );
+
+            },
+            3500
+        );
+
+}
+
+</script>
+
+</body>
+
+</html>
