@@ -500,16 +500,16 @@
 
             /* Broken image fallback */
 
-            icon.onerror =
-                function () {
-
-                    this.onerror =
-                        null;
-
-                    this.src =
-                        "assets/logo.png";
-
-                };
+            icon.onerror = function () {
+                const fallback = externalSiteIcon(app);
+                if (fallback && this.dataset.faviconTried !== "1" && this.src !== fallback) {
+                    this.dataset.faviconTried = "1";
+                    this.src = fallback;
+                    return;
+                }
+                this.onerror = null;
+                this.src = "logo.png";
+            };
 
 
             /* =================================================
@@ -1131,6 +1131,9 @@
         const CATALOG_WORKER_BASE = String(window.APPEXIO_CATALOG_WORKER || "").replace(/\/$/, "");
         let automaticSearchTimer = null;
         let latestAutomaticSearchId = 0;
+        let externalSearchLoading = false;
+        let externalSearchStartedAt = 0;
+        const EXTERNAL_SEARCH_MIN_SPINNER_MS = 1600;
         let manualCatalogApps = [];
         let automaticCatalogApps = [];
         const automaticSearchCache = new Map();
@@ -1140,6 +1143,33 @@
             if (!status) return;
             status.textContent = message;
             status.classList.toggle("is-error", Boolean(isError));
+            status.classList.toggle("is-searching", /\b(searching|discovering)\b/i.test(String(message)));
+        }
+
+        // External catalogs often provide no app artwork. In that case use the
+        // publisher/source website's favicon rather than AppExio's own A logo.
+        function externalSiteIcon(app) {
+            const candidates = [app.homepage, app.sourceUrl, app.apk].filter(Boolean);
+            for (const candidate of candidates) {
+                try {
+                    const url = new URL(candidate, window.location.href);
+                    if (!/^https?:$/.test(url.protocol) || /appexio\.github\.io$/i.test(url.hostname)) continue;
+                    return `https://www.google.com/s2/favicons?domain_url=${encodeURIComponent(url.origin)}&sz=128`;
+                } catch (_) {}
+            }
+            return "";
+        }
+
+        function prepareExternalAppIcons(apps) {
+            for (const app of apps || []) {
+                if (!app || !app.external) continue;
+                const current = String(app.icon || "");
+                if (!current || /appexio\.github\.io\/logo\.png|assets\/logo\.png/i.test(current)) {
+                    const sourceIcon = externalSiteIcon(app);
+                    if (sourceIcon) app.icon = sourceIcon;
+                }
+            }
+            return apps;
         }
 
         function cleanText(value, fallback = "") {
@@ -1210,7 +1240,12 @@
                 crates: `https://crates.io/api/v1/crates?q=${q}&per_page=10`,
                 nuget: `https://azuresearch-usnc.nuget.org/query?q=${q}&take=10&prerelease=false`,
                 docker: `https://hub.docker.com/v2/search/repositories/?query=${q}&page_size=10`,
-                archive: `https://archive.org/advancedsearch.php?q=${q}+AND+mediatype:software&fl[]=identifier,title,description&rows=10&page=1&output=json`
+                archive: `https://archive.org/advancedsearch.php?q=${q}+AND+mediatype:software&fl[]=identifier,title,description&rows=10&page=1&output=json`,
+                apple: `https://itunes.apple.com/search?term=${q}&entity=macSoftware&limit=12`,
+                pubdev: `https://pub.dev/api/search?q=${q}`,
+                rubygems: `https://rubygems.org/api/v1/search.json?query=${q}`,
+                packagist: `https://packagist.org/search.json?q=${q}&per_page=10`,
+                openvsx: `https://open-vsx.org/api/-/search?query=${q}&size=10`
             };
             return direct[provider] || "";
         }
@@ -1374,7 +1409,7 @@
         }
 
         function normalizeDeveloperPackage(raw, source) {
-            let item = raw && (raw._source || raw.package || raw);
+            let item = raw && (raw._source || raw);
             let name = "", id = "", page = "", description = "", developer = "", version = "", downloads = "Catalog listing", category = "Developer tools";
             if (source === "npm") {
                 item = item.package || item;
@@ -1395,10 +1430,23 @@
             } else if (source === "archive") {
                 name = firstValue(item, ["title", "identifier"]); id = firstValue(item, ["identifier"]); page = `https://archive.org/details/${encodeURIComponent(id)}`;
                 description = firstValue(item, ["description"], "Software item indexed by the Internet Archive; availability and rights vary by item."); developer = "See item details"; category = "Software archive · Internet Archive";
+            } else if (source === "pubdev") {
+                name = firstValue(item, ["package"]); id = name; page = `https://pub.dev/packages/${encodeURIComponent(name)}`;
+                description = firstValue(item, ["description"], "Dart and Flutter package listed on pub.dev."); developer = "Dart / Flutter community"; version = "See package page"; category = "Developer package · Dart / Flutter";
+            } else if (source === "rubygems") {
+                name = firstValue(item, ["name"]); id = name; page = `https://rubygems.org/gems/${encodeURIComponent(name)}`;
+                description = firstValue(item, ["info", "description"], "Ruby package listed on RubyGems."); developer = firstValue(item, ["authors"], "RubyGems publisher"); version = firstValue(item, ["version"]); category = "Developer package · RubyGems";
+            } else if (source === "packagist") {
+                name = firstValue(item, ["name"]); id = name; page = `https://packagist.org/packages/${name}`;
+                description = firstValue(item, ["description"], "PHP package listed on Packagist."); developer = name.split("/")[0] || "Packagist publisher"; version = "See package page"; category = "Developer package · PHP / Packagist";
+            } else if (source === "openvsx") {
+                name = firstValue(item, ["displayName", "name"], firstValue(item, ["namespace", "publisher"])); id = `${firstValue(item, ["namespace", "publisher"])}/${firstValue(item, ["name", "extensionName"])}`;
+                page = `https://open-vsx.org/extension/${id}`; description = firstValue(item, ["description"], "Editor extension listed on Open VSX."); developer = firstValue(item, ["namespace", "publisher"], "Extension publisher"); version = firstValue(item, ["version"]); category = "Developer tool · editor extension";
             }
             if (!name || !id || !page) return null;
             const tags = [source];
-            return { id: `auto-${source}-${id}`, name, developer, category, rating: "Catalog", downloads, icon: "https://appexio.github.io/logo.png", apk: page, downloadLabel: "View source listing", version, size: "", android: "Developer / software ecosystem", description, whatsNew: "AppExio indexes public metadata. Check the publisher's license, compatibility, and official page before installing or using any package.", screenshots: [], featured: false, verified: false, tags, external: true, source: source === "maven" ? "Maven Central" : source === "docker" ? "Docker Hub" : source === "archive" ? "Internet Archive" : source === "crates" ? "crates.io" : source === "nuget" ? "NuGet" : "npm", sourceLabel: source === "maven" ? "Maven Central" : source === "docker" ? "Docker Hub" : source === "archive" ? "Internet Archive" : source === "crates" ? "crates.io" : source === "nuget" ? "NuGet" : "npm", sourceUrl: page, homepage: page, packageId: id, searchText: `${name} ${developer} ${description} ${id}`.toLowerCase() };
+            const sourceNames = {maven:"Maven Central",docker:"Docker Hub",archive:"Internet Archive",crates:"crates.io",nuget:"NuGet",npm:"npm",pubdev:"pub.dev",rubygems:"RubyGems",packagist:"Packagist",openvsx:"Open VSX"};
+            return { id: `auto-${source}-${id}`, name, developer, category, rating: "Catalog", downloads, icon: "https://appexio.github.io/logo.png", apk: page, downloadLabel: source === "archive" ? "View item / files" : "Open official listing", version, size: "", android: "Developer / software ecosystem", description, whatsNew: "AppExio indexes public metadata. Check the publisher's license, compatibility, and official page before installing or using any package.", screenshots: [], featured: false, verified: false, tags, external: true, source: sourceNames[source] || source, sourceLabel: sourceNames[source] || source, sourceUrl: page, homepage: page, packageId: id, searchText: `${name} ${developer} ${description} ${id}`.toLowerCase() };
         }
 
         function normalizeProviderResults(payload, provider) {
@@ -1408,6 +1456,15 @@
             if (provider === "nuget") return (payload?.data || []).map(x => normalizeDeveloperPackage(x, provider)).filter(Boolean);
             if (provider === "docker") return (payload?.results || []).map(x => normalizeDeveloperPackage(x, provider)).filter(Boolean);
             if (provider === "archive") return (payload?.response?.docs || []).map(x => normalizeDeveloperPackage(x, provider)).filter(Boolean);
+            if (provider === "pubdev") return (payload?.packages || []).map(x => normalizeDeveloperPackage(x, provider)).filter(Boolean);
+            if (provider === "rubygems") return (Array.isArray(payload) ? payload : []).map(x => normalizeDeveloperPackage(x, provider)).filter(Boolean);
+            if (provider === "packagist") return (payload?.results || []).map(x => normalizeDeveloperPackage(x, provider)).filter(Boolean);
+            if (provider === "openvsx") return (payload?.extensions || payload?.results || []).map(x => normalizeDeveloperPackage(x, provider)).filter(Boolean);
+            if (provider === "apple") return (payload?.results || []).map(item => {
+                const id = firstValue(item, ["trackId", "bundleId"]); const name = firstValue(item, ["trackName", "trackCensoredName"]); const page = firstValue(item, ["trackViewUrl"], id ? `https://apps.apple.com/app/id${id}` : "");
+                if (!id || !name || !page) return null;
+                return {id:`auto-apple-${id}`, name, developer:firstValue(item,["artistName"],"Apple App Store publisher"), category:"macOS app · Apple App Store", rating:Number.isFinite(Number(item.averageUserRating)) ? `${Number(item.averageUserRating).toFixed(1)} / 5` : "App Store", downloads:"Apple App Store", icon:firstValue(item,["artworkUrl512","artworkUrl100"],"https://appexio.github.io/logo.png"), apk:page, downloadLabel:"View on App Store", version:firstValue(item,["version"]), size:"", android:"macOS", description:firstValue(item,["description"],"App listed in Apple's public App Store search API."), whatsNew:firstValue(item,["releaseNotes"],"See the official App Store listing for current details."), screenshots:[],featured:false,verified:false,tags:["Apple App Store"],external:true,source:"Apple App Store",sourceLabel:"Apple App Store",sourceUrl:page,homepage:page,packageId:String(id),searchText:`${name} ${item.artistName||""} ${item.description||""}`.toLowerCase()};
+            }).filter(Boolean);
             return unwrapResults(payload).map(provider === "flathub" ? normalizeFlathubApp : normalizeRepologyApp).filter(Boolean);
         }
 
@@ -1440,13 +1497,46 @@
             return [app.name, app.developer, app.category, app.description, app.version, app.android, app.source, ...(Array.isArray(app.tags) ? app.tags : [])].join(" ").toLowerCase();
         }
 
+        function renderExternalSearchLoader() {
+            const gamesGrid = document.getElementById("gamesGrid");
+            if (!gamesGrid) return;
+            const existing = gamesGrid.querySelector(".external-search-loading");
+            if (!externalSearchLoading) {
+                existing?.remove();
+                return;
+            }
+            if (existing) return;
+            const loader = document.createElement("div");
+            loader.className = "external-search-loading";
+            loader.setAttribute("role", "status");
+            loader.setAttribute("aria-live", "polite");
+            loader.innerHTML = '<span class="external-search-spinner" aria-hidden="true"></span><span class="external-search-loading-copy"><strong>Finding more apps…</strong><small>Searching connected external libraries. More results may appear shortly.</small></span>';
+            gamesGrid.appendChild(loader);
+        }
+
+        function beginExternalSearchLoading() {
+            externalSearchLoading = true;
+            externalSearchStartedAt = Date.now();
+            renderExternalSearchLoader();
+        }
+
+        async function finishExternalSearchLoading(searchId) {
+            if (searchId !== latestAutomaticSearchId) return;
+            const remaining = EXTERNAL_SEARCH_MIN_SPINNER_MS - (Date.now() - externalSearchStartedAt);
+            if (remaining > 0) await new Promise(resolve => setTimeout(resolve, remaining));
+            if (searchId !== latestAutomaticSearchId) return;
+            externalSearchLoading = false;
+            renderExternalSearchLoader();
+        }
+
         function renderCombinedCatalog(query = "") {
             const gamesGrid = document.getElementById("gamesGrid");
             if (!gamesGrid) return;
             const term = String(query || "").trim().toLowerCase();
-            const all = combinedCatalog();
+            const all = prepareExternalAppIcons(combinedCatalog());
             const filtered = term ? all.filter(app => searchableAppText(app).includes(term)) : all;
             renderApps(gamesGrid, filtered);
+            renderExternalSearchLoader();
             window.apkCityApps = all;
             const count = document.getElementById("appCount");
             if (count) count.textContent = `${all.length}+`;
@@ -1491,7 +1581,12 @@
                 ...["cli", "media"].map(term => fetchJson(providerUrl("crates", term)).then(data => normalizeProviderResults(data, "crates"))),
                 fetchJson(providerUrl("nuget", "json" )).then(data => normalizeProviderResults(data, "nuget")),
                 fetchJson(providerUrl("docker", "nginx")).then(data => normalizeProviderResults(data, "docker")),
-                fetchJson(providerUrl("archive", "open source software")).then(data => normalizeProviderResults(data, "archive"))
+                fetchJson(providerUrl("archive", "open source software")).then(data => normalizeProviderResults(data, "archive")),
+                ...["macOS utility", "developer tools"].map(term => fetchJson(providerUrl("apple", term)).then(data => normalizeProviderResults(data, "apple"))),
+                ...["flutter", "image"].map(term => fetchJson(providerUrl("pubdev", term)).then(data => normalizeProviderResults(data, "pubdev"))),
+                fetchJson(providerUrl("rubygems", "http client")).then(data => normalizeProviderResults(data, "rubygems")),
+                fetchJson(providerUrl("packagist", "framework")).then(data => normalizeProviderResults(data, "packagist")),
+                fetchJson(providerUrl("openvsx", "python")).then(data => normalizeProviderResults(data, "openvsx"))
             ];
             const settled = await Promise.allSettled(tasks);
             const apps = settled.flatMap(result => result.status === "fulfilled" ? result.value : []);
@@ -1499,7 +1594,7 @@
             saveInitialCache(automaticCatalogApps);
             renderCombinedCatalog(document.getElementById("searchInput")?.value || "");
             if (automaticCatalogApps.length) {
-                updateCatalogStatus(`${automaticCatalogApps.length} apps discovered automatically. Your admin-added apps remain included. Search to discover more from F-Droid, WinGet, GitHub Releases, GitLab, Flathub, Repology, Homebrew, npm, Maven Central, crates.io, NuGet, Docker Hub and Internet Archive.`);
+                updateCatalogStatus(`${automaticCatalogApps.length} apps discovered automatically. Your admin-added apps remain included. Search to discover more from F-Droid, WinGet, GitHub Releases, GitLab, Flathub, Repology, Homebrew, Apple App Store, npm, Maven Central, crates.io, NuGet, Docker Hub, pub.dev, RubyGems, Packagist, Open VSX and Internet Archive.`);
             } else {
                 updateCatalogStatus("Automatic catalogs could not be reached directly. Search still works for your existing apps; if the browser blocks an API, deploy the included Cloudflare Worker and set it in catalog-config.js.", true);
             }
@@ -1531,13 +1626,16 @@
             if (term.length < 2 || searchId !== latestAutomaticSearchId) return;
             const cacheKey = term.toLowerCase();
             const cached = automaticSearchCache.get(cacheKey);
+            beginExternalSearchLoading();
+            renderExternalSearchLoader();
             if (cached && Date.now() - cached.savedAt < AUTO_SEARCH_CACHE_TTL) {
                 automaticCatalogApps = dedupeApps([...automaticCatalogApps, ...cached.apps]);
                 renderCombinedCatalog(term);
                 updateCatalogStatus(`Showing results for “${term}” from automatic catalogs and your own app library.`);
+                await finishExternalSearchLoading(searchId);
                 return;
             }
-            updateCatalogStatus(`Searching Android, Windows, Linux, macOS, GitHub/GitLab, npm, Maven, Rust, NuGet, Docker Hub and Internet Archive for “${term}”…`);
+            updateCatalogStatus(`Searching Android, Windows, Linux, macOS, Apple App Store, GitHub/GitLab, npm, Maven, Rust, NuGet, Docker Hub, pub.dev, RubyGems, Packagist, Open VSX and Internet Archive for “${term}”…`);
             const tasks = [
                 fetchJson(fdroidSearchUrl(term)).then(data => unwrapResults(data).map(normalizeFdroidApp).filter(Boolean)),
                 fetchJson(wingetSearchUrl(term)).then(data => unwrapResults(data).map(normalizeWingetApp).filter(Boolean)),
@@ -1546,7 +1644,7 @@
                 searchHomebrewApps(term),
                 searchGitlabProjects(term),
                 searchGithubReleases(term),
-                ...["npm", "maven", "crates", "nuget", "docker", "archive"].map(provider => fetchJson(providerUrl(provider, term), 11000).then(data => normalizeProviderResults(data, provider)))
+                ...["npm", "maven", "crates", "nuget", "docker", "archive", "apple", "pubdev", "rubygems", "packagist", "openvsx"].map(provider => fetchJson(providerUrl(provider, term), 11000).then(data => normalizeProviderResults(data, provider)))
             ];
             const settled = await Promise.allSettled(tasks);
             if (searchId !== latestAutomaticSearchId) return;
@@ -1560,6 +1658,7 @@
             updateCatalogStatus(results.length
                 ? `Found ${results.length} automatic result(s) for “${term}”. Your manually added apps remain available when they match.`
                 : `No automatic matches for “${term}” were returned. Try another term or check the official stores.`, !successfulSources);
+            await finishExternalSearchLoading(searchId);
         }
 
         function setupSearch(apps) {
@@ -1574,10 +1673,18 @@
             searchInput.parentNode.replaceChild(newInput, searchInput);
             newInput.addEventListener("input", function () {
                 const query = this.value.trim();
+                const preservedScrollY = window.scrollY;
                 renderCombinedCatalog(query);
+                requestAnimationFrame(() => {
+                    if (document.activeElement === newInput && Math.abs(window.scrollY - preservedScrollY) > 1) {
+                        window.scrollTo({ top: preservedScrollY, left: window.scrollX, behavior: "auto" });
+                    }
+                });
                 clearTimeout(automaticSearchTimer);
                 if (query.length < 2) {
                     latestAutomaticSearchId++;
+                    externalSearchLoading = false;
+                    renderExternalSearchLoader();
                     if (!query) updateCatalogStatus("Your admin-added apps and automatically discovered catalog apps are shown together.");
                     return;
                 }
@@ -1658,7 +1765,7 @@
     <style>
 *{box-sizing:border-box;margin:0;padding:0}
 :root{--bg:#0b0d12;--surface:#12161f;--surface2:#191e29;--line:rgba(255,255,255,.09);--text:#f5f7fb;--muted:#9aa3b2;--brand:#8b6cff;--brand2:#5d9cff;--green:#5ce092}
-html{scroll-behavior:smooth}body{font-family:Inter,Arial,sans-serif;background:var(--bg);color:var(--text);padding-bottom:30px}a{text-decoration:none;color:inherit}
+html{scroll-behavior:auto}body{font-family:Inter,Arial,sans-serif;background:var(--bg);color:var(--text);padding-bottom:30px}a{text-decoration:none;color:inherit}
 .header{height:72px;position:sticky;top:0;z-index:100;background:rgba(11,13,18,.9);backdrop-filter:blur(22px);border-bottom:1px solid var(--line)}.nav{height:100%;max-width:1500px;margin:auto;padding:0 28px;display:flex;align-items:center;gap:28px}.logo{display:flex;align-items:center;gap:9px;font-size:19px;font-weight:800;letter-spacing:-.7px;white-space:nowrap}.logo span{color:var(--brand)}.logo-icon{width:38px;height:38px;border-radius:11px;overflow:hidden;background:#7c5cff}.logo-icon img{width:100%;height:100%;object-fit:cover}.nav-links{display:flex;align-items:center;gap:6px}.nav-links a:not(.admin-lock){font-size:13px;font-weight:600;color:var(--muted);padding:9px 12px;border-radius:10px}.nav-links a.active,.nav-links a:hover{color:#fff;background:rgba(255,255,255,.06)}.admin-lock{width:36px;height:36px;display:grid;place-items:center;border:1px solid var(--line);border-radius:10px;color:var(--muted)}.search-wrapper{margin-left:auto}.nav-search{width:min(390px,34vw);height:44px;display:flex;align-items:center;gap:10px;padding:0 15px;background:#1a1f2a;border:1px solid var(--line);border-radius:14px}.nav-search:focus-within{border-color:rgba(139,108,255,.6);box-shadow:0 0 0 4px rgba(139,108,255,.1)}.nav-search i{color:var(--muted);font-size:14px}.nav-search input{width:100%;background:none;border:0;outline:0;color:#fff;font:inherit;font-size:13px}.nav-search input::placeholder{color:#727b89}.mobile-menu,.search-button{display:none}
 main{max-width:1500px;margin:auto;padding:0 28px}.store-head{padding:28px 0 18px}.store-title-row{display:flex;justify-content:space-between;align-items:end;gap:20px}.eyebrow{font-size:10px;font-weight:800;letter-spacing:1.3px;color:var(--brand);margin-bottom:8px}.store-title{font-size:30px;letter-spacing:-1.3px}.store-title span{color:var(--brand)}.store-sub{margin-top:7px;color:var(--muted);font-size:13px}.get-app{padding:11px 15px;border-radius:12px;background:linear-gradient(135deg,var(--brand),var(--brand2));font-size:12px;font-weight:700;white-space:nowrap}
 .category-strip{display:flex;gap:9px;overflow:auto;padding:8px 0 20px;scrollbar-width:none}.category{flex:none;padding:9px 15px;border:1px solid var(--line);background:#121720;border-radius:999px;font-size:12px;color:var(--muted);cursor:pointer;transition:.2s}.category:hover,.category.active{color:#fff;background:rgba(139,108,255,.16);border-color:rgba(139,108,255,.42)}
@@ -2137,7 +2244,7 @@ body.details-open{overflow:hidden}
   --text:#f5f7ff;--muted:#9aa8bf;--brand:#9b7bff;--brand2:#53b7ff;--green:#5ce6a0;
   --glow:rgba(139,108,255,.22);--radius:20px;
 }
-html{scroll-behavior:smooth;scroll-padding-top:90px}
+html{scroll-behavior:auto;scroll-padding-top:90px;overflow-anchor:none}
 body{min-width:320px;background:radial-gradient(ellipse at 12% -10%,rgba(91,75,183,.19),transparent 34%),radial-gradient(ellipse at 95% 22%,rgba(28,119,166,.11),transparent 28%),var(--bg);color:var(--text);line-height:1.5;-webkit-font-smoothing:antialiased}
 ::selection{background:rgba(155,123,255,.38);color:#fff}
 a,button,input{-webkit-tap-highlight-color:transparent}
@@ -2292,8 +2399,15 @@ footer{border-top-color:rgba(180,196,230,.12);background:rgba(7,10,16,.38)}
 
 /* Automatic multi-source catalog additions */
 .auto-catalog-status{margin:0 0 14px;padding:11px 14px;border:1px solid rgba(139,108,255,.18);border-radius:12px;background:rgba(139,108,255,.055);color:var(--muted);font-size:12px;line-height:1.55}
+.auto-catalog-status.is-searching{display:flex;align-items:center;gap:10px}.auto-catalog-status.is-searching:before{content:"";flex:0 0 15px;width:15px;height:15px;border:2px solid rgba(185,168,255,.25);border-top-color:#b9a8ff;border-right-color:#b9a8ff;border-radius:50%;animation:appexio-catalog-spin .7s linear infinite}@keyframes appexio-catalog-spin{to{transform:rotate(360deg)}}
+#gamesGrid{overflow-anchor:none}.app-card img{flex-shrink:0}
 .auto-catalog-status.is-error{border-color:rgba(255,177,80,.25);background:rgba(255,177,80,.06);color:#e6c49a}
-.app-source-badge{display:inline-flex;align-items:center;max-width:100%;width:max-content;margin-top:7px;padding:3px 6px;border:1px solid rgba(139,108,255,.22);border-radius:5px;color:#b9a8ff;background:rgba(139,108,255,.07);font-size:9px;line-height:1.3;white-space:nowrap}
+.external-search-loading{grid-column:1/-1;display:flex;align-items:center;justify-content:center;gap:14px;min-height:108px;padding:20px;border:1px solid rgba(139,108,255,.24);border-radius:16px;background:linear-gradient(120deg,rgba(139,108,255,.10),rgba(17,23,35,.65));color:var(--muted);animation:external-loader-in .2s ease-out both}
+.external-search-spinner{display:block;flex:0 0 28px;width:28px;height:28px;border:3px solid rgba(185,168,255,.22);border-top-color:#b9a8ff;border-right-color:#b9a8ff;border-radius:50%;animation:appexio-catalog-spin .72s linear infinite}
+.external-search-loading-copy{display:flex;flex-direction:column;gap:5px}.external-search-loading-copy strong{font-size:13px;color:#f0edff}.external-search-loading-copy small{font-size:11px;line-height:1.5;color:var(--muted)}
+@keyframes external-loader-in{from{opacity:0;transform:translateY(4px)}to{opacity:1;transform:translateY(0)}}
+@media(max-width:520px){.external-search-loading{justify-content:flex-start;min-height:100px;padding:16px}.external-search-spinner{flex-basis:25px;width:25px;height:25px}}
+.catalog-note{margin:-5px 0 14px;color:var(--muted);font-size:11px;line-height:1.5}.app-source-badge{display:inline-flex;align-items:center;max-width:100%;width:max-content;margin-top:7px;padding:3px 6px;border:1px solid rgba(139,108,255,.22);border-radius:5px;color:#b9a8ff;background:rgba(139,108,255,.07);font-size:9px;line-height:1.3;white-space:nowrap}
 </style>
 
 <script src="catalog-config.js"></script>
@@ -2307,7 +2421,7 @@ footer{border-top-color:rgba(180,196,230,.12);background:rgba(7,10,16,.38)}
 <main>
 <section class="store-head"><div class="store-title-row"><div><div class="eyebrow">APPEXIO • DIGITAL MARKETPLACE</div><h1 class="store-title">Find something <span>worth downloading.</span></h1><p class="store-sub">Apps, games and PC software — organized in one place.</p></div><a href="android-pc.html" class="get-app"><i class="fa-solid fa-download"></i> Get AppExio App</a></div></section>
 <div class="category-strip"><span class="category active">Pc Apps</span><span class="category">Games</span><span class="category">Android Apps</span><span class="category">PC software</span></div>
-<section class="section" id="games"><div class="section-header"><div class="section-title"><h2>Latest apps & games</h2><p>Freshly added to the AppExio library</p></div><a href="#games" class="view-all">Explore all <i class="fa-solid fa-arrow-right"></i></a></div><div id="autoCatalogStatus" class="auto-catalog-status" role="status" aria-live="polite">Loading automatic app catalogs…</div><div class="apps-grid" id="gamesGrid"><div class="loading-state"><i class="fa-solid fa-spinner fa-spin"></i><span>Loading apps & games...</span></div></div></section>
+<section class="section" id="games"><div class="section-header"><div class="section-title"><h2>Latest apps & games</h2><p>Freshly added to the AppExio library</p></div><a href="#games" class="view-all">Explore all <i class="fa-solid fa-arrow-right"></i></a></div><div id="autoCatalogStatus" class="auto-catalog-status" role="status" aria-live="polite">Loading automatic app catalogs…</div><div class="catalog-note">Connected sources may provide direct installer files, package-manager entries, or official store pages. Availability depends on each publisher and platform. AppExio does not mirror files unless redistribution is authorized.</div><div class="apps-grid" id="gamesGrid"><div class="loading-state"><i class="fa-solid fa-spinner fa-spin"></i><span>Loading apps & games...</span></div></div></section>
 <section class="feature-row"><div class="feature-main"><div class="feature-label">EDITOR'S DISCOVERY</div><h2>One marketplace.<br>More to explore.</h2><p>Discover Android apps, PC software and games without searching across dozens of websites.</p><a href="#games">Browse library <i class="fa-solid fa-arrow-right"></i></a></div><div class="feature-side"><h3>Get AppExio</h3><p>Take your marketplace with you and discover new software from your Android device or PC.</p><a href="android-pc.html" class="get-app" style="position:absolute;bottom:22px">Download App</a><i class="fa-solid fa-mobile-screen side-icon"></i></div></section>
 <section class="section"><div class="section-header"><div class="section-title"><h2>Built for discovery</h2><p>A cleaner way to browse your software library</p></div></div><div class="info-row"><div class="info-card"><i class="fa-solid fa-layer-group"></i><h3>Everything together</h3><p>Android apps, games and PC software organized in one modern marketplace.</p></div><div class="info-card"><i class="fa-solid fa-bolt"></i><h3>Fresh additions</h3><p>New releases appear directly in the library so the latest content is easy to find.</p></div><div class="info-card"><i class="fa-solid fa-magnifying-glass"></i><h3>Fast discovery</h3><p>Search through applications and software without unnecessary pages or clutter.</p></div></div></section>
 </main>
