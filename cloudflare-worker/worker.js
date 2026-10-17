@@ -94,6 +94,21 @@ export default {
       } else if (path === "/api/archive/search") {
         const archiveQuery = `(${q}) AND mediatype:software`;
         data = await getJson(`https://archive.org/advancedsearch.php?q=${encodeURIComponent(archiveQuery)}&fl%5B%5D=identifier&fl%5B%5D=title&fl%5B%5D=description&rows=10&page=1&output=json`, 900);
+      } else if (path === "/api/apple/search") {
+        const [mac, ios] = await Promise.all([
+          getJson(`https://itunes.apple.com/search?term=${encodeURIComponent(q)}&entity=macSoftware&limit=10`, 900),
+          getJson(`https://itunes.apple.com/search?term=${encodeURIComponent(q)}&entity=software&limit=10`, 900)
+        ]);
+        data = { results: [...(mac.results || []), ...(ios.results || [])] };
+        ttl = 900;
+      } else if (path === "/api/pubdev/search") {
+        data = await getJson(`https://pub.dev/api/search?q=${encodeURIComponent(q)}`, 600);
+      } else if (path === "/api/rubygems/search") {
+        data = await getJson(`https://rubygems.org/api/v1/search.json?query=${encodeURIComponent(q)}`, 600);
+      } else if (path === "/api/packagist/search") {
+        data = await getJson(`https://packagist.org/search.json?q=${encodeURIComponent(q)}&per_page=10`, 600);
+      } else if (path === "/api/openvsx/search") {
+        data = await getJson(`https://open-vsx.org/api/-/search?query=${encodeURIComponent(q)}&size=10`, 600);
       } else {
         return json({ error: "Unknown endpoint" }, 404, origin, 0);
       }
