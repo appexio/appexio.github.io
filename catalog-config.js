@@ -3,4 +3,4 @@
    If browser CORS blocks a provider, deploy cloudflare-worker/worker.js and
    set the Worker base URL below (no trailing slash).
 */
-window.APPEXIO_CATALOG_WORKER = "";
+window.APPEXIO_CATALOG_WORKER = "https://small-wind-fe25.bhattisaaab007.workers.dev";
