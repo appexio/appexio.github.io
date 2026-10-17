@@ -295,7 +295,12 @@
                                     data.tags
                                 )
                                     ? data.tags
-                                    : []
+                                    : [],
+
+                            source: "AppExio",
+                            sourceLabel: "",
+                            external: false,
+                            downloadLabel: "Download"
 
                         });
 
@@ -358,6 +363,7 @@
                 ================================================= */
 
                 setupSearch(apps);
+                loadAutomaticCatalogs();
 
 
             } catch (error) {
@@ -368,24 +374,10 @@
                 );
 
 
-                gamesGrid.innerHTML = `
-
-                    <div class="empty-state">
-
-                        <i class="fa-solid fa-triangle-exclamation"></i>
-
-                        <h3>
-                            Unable to load apps
-                        </h3>
-
-                        <p>
-                            Please check your Firebase connection
-                            and try again later.
-                        </p>
-
-                    </div>
-
-                `;
+                                manualCatalogApps = [];
+                setupSearch([]);
+                updateCatalogStatus("Your Firebase app list could not be loaded. Automatic catalogs will still be attempted.", true);
+                loadAutomaticCatalogs();
 
             }
 
@@ -646,6 +638,12 @@
                 developer
             );
 
+            if (app.sourceLabel) {
+                const sourceBadge = document.createElement("span");
+                sourceBadge.className = "app-source-badge";
+                sourceBadge.textContent = app.sourceLabel;
+                card.appendChild(sourceBadge);
+            }
 
             card.appendChild(
                 meta
@@ -951,6 +949,9 @@
 
                 downloadButton.href = app.apk;
                 downloadButton.style.display = "inline-flex";
+                downloadButton.target = "_blank";
+                downloadButton.rel = "noopener noreferrer";
+                downloadButton.innerHTML = `<i class="fa-solid fa-download"></i> ${escapeHTML(app.downloadLabel || "Download")}`;
 
             } else {
 
@@ -1124,126 +1125,466 @@
            SEARCH
         ====================================================== */
 
-        function setupSearch(apps) {
+        const AUTO_CATALOG_CACHE_KEY = "appexio:auto-catalog:v1";
+        const AUTO_CATALOG_CACHE_TTL = 6 * 60 * 60 * 1000;
+        const AUTO_SEARCH_CACHE_TTL = 10 * 60 * 1000;
+        const CATALOG_WORKER_BASE = String(window.APPEXIO_CATALOG_WORKER || "").replace(/\/$/, "");
+        let automaticSearchTimer = null;
+        let latestAutomaticSearchId = 0;
+        let manualCatalogApps = [];
+        let automaticCatalogApps = [];
+        const automaticSearchCache = new Map();
 
-            const searchInput =
-                document.getElementById(
-                    "searchInput"
-                );
+        function updateCatalogStatus(message, isError = false) {
+            const status = document.getElementById("autoCatalogStatus");
+            if (!status) return;
+            status.textContent = message;
+            status.classList.toggle("is-error", Boolean(isError));
+        }
 
+        function cleanText(value, fallback = "") {
+            if (value === undefined || value === null) return fallback;
+            if (typeof value === "string" || typeof value === "number") return String(value).trim() || fallback;
+            return fallback;
+        }
 
-            if (!searchInput) {
-
-                return;
-
+        function firstValue(object, keys, fallback = "") {
+            for (const key of keys) {
+                const value = key.split(".").reduce((current, part) => current && current[part] !== undefined ? current[part] : undefined, object);
+                const result = cleanText(value);
+                if (result) return result;
             }
+            return fallback;
+        }
 
+        function unwrapResults(payload) {
+            if (Array.isArray(payload)) return payload;
+            if (!payload || typeof payload !== "object") return [];
+            const candidates = [payload.Packages, payload.packages, payload.results, payload.apps, payload.items, payload.data, payload.hits];
+            for (const candidate of candidates) {
+                if (Array.isArray(candidate)) return candidate;
+                if (candidate && Array.isArray(candidate.hits)) return candidate.hits.map(item => item._source || item);
+            }
+            if (payload.Package) return [payload.Package];
+            if (payload.package) return [payload.package];
+            return [];
+        }
 
-            /*
-             * Clone input to remove any
-             * previous listener.
-             */
+        async function fetchJson(url, timeoutMs = 9000) {
+            const controller = new AbortController();
+            const timer = setTimeout(() => controller.abort(), timeoutMs);
+            try {
+                const response = await fetch(url, { signal: controller.signal, headers: { "Accept": "application/json" } });
+                if (!response.ok) throw new Error(`HTTP ${response.status}`);
+                return await response.json();
+            } finally {
+                clearTimeout(timer);
+            }
+        }
 
-            const newInput =
-                searchInput.cloneNode(
-                    true
-                );
+        function fdroidSearchUrl(query) {
+            if (CATALOG_WORKER_BASE) return `${CATALOG_WORKER_BASE}/api/fdroid/search?q=${encodeURIComponent(query)}`;
+            return `https://search.f-droid.org/api/search_apps?q=${encodeURIComponent(query)}`;
+        }
 
+        function wingetFeaturedUrl() {
+            if (CATALOG_WORKER_BASE) return `${CATALOG_WORKER_BASE}/api/winget/featured`;
+            return "https://api.winget.run/v2/featured";
+        }
 
-            searchInput.parentNode.replaceChild(
-                newInput,
-                searchInput
-            );
+        function wingetSearchUrl(query) {
+            if (CATALOG_WORKER_BASE) return `${CATALOG_WORKER_BASE}/api/winget/search?q=${encodeURIComponent(query)}`;
+            return `https://api.winget.run/v2/packages?query=${encodeURIComponent(query)}&take=12`;
+        }
 
+        // Additional public catalogs. Each provider is optional: failures are isolated
+        // so a single upstream outage never prevents the other sources from working.
+        function providerUrl(provider, query) {
+            const q = encodeURIComponent(query);
+            if (CATALOG_WORKER_BASE) return `${CATALOG_WORKER_BASE}/api/${provider}/search?q=${q}`;
+            const direct = {
+                flathub: `https://flathub.org/api/v2/search?query=${q}`,
+                repology: `https://repology.org/api/v1/projects/?search=${q}`,
+                npm: `https://registry.npmjs.org/-/v1/search?text=${q}&size=10`,
+                maven: `https://search.maven.org/solrsearch/select?q=${q}&rows=10&wt=json`,
+                crates: `https://crates.io/api/v1/crates?q=${q}&per_page=10`,
+                nuget: `https://azuresearch-usnc.nuget.org/query?q=${q}&take=10&prerelease=false`,
+                docker: `https://hub.docker.com/v2/search/repositories/?query=${q}&page_size=10`,
+                archive: `https://archive.org/advancedsearch.php?q=${q}+AND+mediatype:software&fl[]=identifier,title,description&rows=10&page=1&output=json`
+            };
+            return direct[provider] || "";
+        }
 
-            newInput.addEventListener(
-                "input",
-                function () {
+        async function searchHomebrewApps(query) {
+            // Homebrew's public indexes are large; use the edge-cached Worker route rather
+            // than downloading multi-megabyte indexes into every visitor's browser.
+            if (!CATALOG_WORKER_BASE) return [];
+            const data = await fetchJson(providerUrl("homebrew", query), 15000);
+            return unwrapResults(data).map(normalizeHomebrewApp).filter(Boolean);
+        }
 
-                    const search =
-                        this.value
-                            .toLowerCase()
-                            .trim();
+        function normalizeFdroidApp(raw) {
+            const item = raw && (raw._source || raw.app || raw);
+            const packageName = firstValue(item, ["packageName", "package_name", "package", "id", "applicationId", "ApplicationId"]);
+            const name = firstValue(item, ["name", "title", "localizedName", "packageName", "package_name"]);
+            if (!name || !packageName) return null;
+            const iconValue = firstValue(item, ["icon", "iconUrl", "icon_url", "iconURL", "image"]);
+            const icon = /^https?:\/\//i.test(iconValue) ? iconValue : `https://f-droid.org/repo/icons-640/${encodeURIComponent(packageName)}.png`;
+            const page = `https://f-droid.org/packages/${encodeURIComponent(packageName)}/`;
+            const version = firstValue(item, ["suggestedVersionName", "suggested_version_name", "versionName", "version", "latestVersion", "suggestedVersion"]);
+            const description = firstValue(item, ["summary", "description", "shortDescription", "short_description", "descriptionText"], "Open-source Android application listed by F-Droid.");
+            const developer = firstValue(item, ["authorName", "author_name", "developer", "author", "maintainer"], "Open-source developer");
+            const category = firstValue(item, ["categories", "category"], "Android · F-Droid");
+            const tagsRaw = item.tags || item.categories || [];
+            const tags = Array.isArray(tagsRaw) ? tagsRaw.map(String) : String(tagsRaw).split(/[;,]/).filter(Boolean);
+            return {
+                id: `auto-fdroid-${packageName}`, name, developer, category: typeof category === "string" ? category : "Android · F-Droid",
+                rating: "Open source", downloads: "F-Droid", icon, apk: page, downloadLabel: "View & Download",
+                version, size: firstValue(item, ["size", "fileSize", "file_size"]), android: "Android", description,
+                whatsNew: "Open the F-Droid listing to see the available versions and release information.", screenshots: [], featured: false,
+                verified: false, tags, external: true, source: "F-Droid", sourceLabel: "F-Droid", sourceUrl: page, packageId: packageName,
+                searchText: `${name} ${developer} ${description} ${packageName} ${tags.join(" ")}`.toLowerCase()
+            };
+        }
 
+        function normalizeWingetApp(raw) {
+            const item = raw && (raw.Package || raw.package || raw);
+            const latest = item.Latest || item.latest || item;
+            const id = firstValue(item, ["Id", "id", "PackageIdentifier", "packageIdentifier", "PackageId"]);
+            const name = firstValue(latest, ["Name", "name", "PackageName"], firstValue(item, ["Name", "name"]));
+            if (!name || !id) return null;
+            const publisher = firstValue(latest, ["Publisher", "publisher", "Author", "author"], "Windows software publisher");
+            const homepage = firstValue(latest, ["Homepage", "homepage", "Website", "website"]);
+            const pkgParts = id.split(".");
+            const packagePage = pkgParts.length > 1 ? `https://winget.run/pkg/${encodeURIComponent(pkgParts[0])}/${pkgParts.slice(1).map(encodeURIComponent).join("/")}` : "https://winget.run/";
+            const icon = firstValue(item, ["IconUrl", "iconUrl", "Logo", "logo", "Latest.IconUrl"], "https://appexio.github.io/logo.png");
+            const tagsRaw = latest.Tags || latest.tags || item.Tags || item.tags || [];
+            const tags = Array.isArray(tagsRaw) ? tagsRaw.map(String) : String(tagsRaw).split(/[;,]/).filter(Boolean);
+            const description = firstValue(latest, ["Description", "description", "ShortDescription", "shortDescription"], "Windows application listed in the WinGet package catalog.");
+            const versions = item.Versions || item.versions || [];
+            const version = firstValue(item, ["LatestVersion", "latestVersion", "Version", "version"], Array.isArray(versions) ? cleanText(versions[0]) : "");
+            const official = homepage || packagePage;
+            return {
+                id: `auto-winget-${id}`, name, developer: publisher, category: "Windows · WinGet", rating: "Catalog", downloads: "Windows",
+                icon, apk: official, downloadLabel: homepage ? "Official download page" : "View package", version, size: "", android: "Windows 10/11",
+                description, whatsNew: "This listing is discovered automatically from a community Windows package catalog. Confirm publisher and installer details before installing.",
+                screenshots: [], featured: Boolean(item.Featured || item.featured), verified: false, tags, external: true,
+                source: "WinGet", sourceLabel: "WinGet", sourceUrl: packagePage, homepage, packageId: id,
+                searchText: `${name} ${publisher} ${description} ${id} ${tags.join(" ")}`.toLowerCase()
+            };
+        }
 
-                    const cards =
-                        document.querySelectorAll(
-                            ".app-card"
-                        );
+        function normalizeGithubRelease(repo, release) {
+            if (!repo || !release || release.draft || release.prerelease) return null;
+            const assets = Array.isArray(release.assets) ? release.assets : [];
+            const installer = assets.find(asset => /\.(exe|msi|msix|appx|zip|apk|dmg|deb|rpm)$/i.test(asset.name || ""));
+            if (!installer) return null;
+            const name = cleanText(repo.name, repo.full_name || "GitHub project").replace(/[-_]/g, " ");
+            const description = cleanText(repo.description, "Open-source software release hosted on GitHub.");
+            return {
+                id: `auto-github-${repo.full_name}`, name, developer: repo.owner?.login || "GitHub publisher", category: "Open Source · GitHub",
+                rating: "Open source", downloads: `${Number(installer.download_count || 0).toLocaleString()} downloads`, icon: repo.owner?.avatar_url || "https://appexio.github.io/logo.png",
+                apk: installer.browser_download_url || release.html_url || repo.html_url, downloadLabel: `Download ${installer.name}`,
+                version: release.tag_name || "Latest release", size: installer.size ? `${(installer.size / 1048576).toFixed(1)} MB` : "",
+                android: /\.apk$/i.test(installer.name) ? "Android" : /\.(exe|msi|msix|appx)$/i.test(installer.name) ? "Windows" : "Multiple platforms",
+                description, whatsNew: cleanText(release.body, "See the project's official release notes on GitHub."), screenshots: [], featured: false,
+                verified: false, tags: [repo.language, ...(repo.topics || [])].filter(Boolean), external: true, source: "GitHub Releases", sourceLabel: "GitHub Release",
+                sourceUrl: release.html_url || repo.html_url, homepage: repo.html_url, packageId: repo.full_name,
+                searchText: `${name} ${repo.full_name} ${repo.owner?.login || ""} ${description} ${repo.language || ""}`.toLowerCase()
+            };
+        }
 
+        function normalizeFlathubApp(raw) {
+            const item = raw && (raw._source || raw.app || raw);
+            const appId = firstValue(item, ["app_id", "appId", "id", "flatpak_app_id", "flatpakId", "name"]);
+            const name = firstValue(item, ["name", "title", "app_name", "appName"], appId);
+            if (!name || !appId) return null;
+            const slug = firstValue(item, ["app_id", "appId", "id"], appId);
+            const page = /^https?:\/\//i.test(firstValue(item, ["url", "homepage", "project_url"]))
+                ? firstValue(item, ["url", "homepage", "project_url"])
+                : `https://flathub.org/apps/${encodeURIComponent(slug)}`;
+            const icon = firstValue(item, ["icon", "icon_url", "iconUrl", "iconUrlLarge", "logo"], "https://appexio.github.io/logo.png");
+            const description = firstValue(item, ["summary", "description", "comment"], "Desktop application listed in the Flathub catalog.");
+            return {
+                id: `auto-flathub-${slug}`, name, developer: firstValue(item, ["developer_name", "developer", "author"], "Flathub publisher"),
+                category: "Linux · Flathub", rating: "Catalog", downloads: "Flathub", icon, apk: page, downloadLabel: "View on Flathub",
+                version: firstValue(item, ["version", "current_version"]), size: "", android: "Linux / Flatpak", description,
+                whatsNew: "Open the Flathub listing for current install and release information.", screenshots: [], featured: false,
+                verified: false, tags: Array.isArray(item.categories) ? item.categories : [], external: true, source: "Flathub", sourceLabel: "Flathub",
+                sourceUrl: page, homepage: firstValue(item, ["homepage", "project_url"], page), packageId: slug,
+                searchText: `${name} ${description} ${slug}`.toLowerCase()
+            };
+        }
 
-                    /* EMPTY SEARCH */
+        function normalizeRepologyApp(raw) {
+            const item = raw && (raw._source || raw.project || raw);
+            const project = typeof item === "string" ? item : firstValue(item, ["name", "project", "project_name", "id"]);
+            if (!project) return null;
+            const name = project.replace(/[-_]+/g, " ");
+            const page = `https://repology.org/project/${encodeURIComponent(project)}/versions`;
+            const description = firstValue(item, ["description", "summary"], "Software package indexed by Repology across supported package repositories.");
+            return {
+                id: `auto-repology-${project}`, name, developer: firstValue(item, ["maintainer", "publisher"], "See package publisher"),
+                category: "Multi-platform · Repology", rating: "Catalog", downloads: "Package index", icon: firstValue(item, ["icon", "icon_url"], "https://appexio.github.io/logo.png"),
+                apk: page, downloadLabel: "View package versions", version: firstValue(item, ["version", "latest_version"]), size: "", android: "Multiple platforms",
+                description, whatsNew: "Repology compares package versions across software repositories; use the repository or publisher page for downloads.",
+                screenshots: [], featured: false, verified: false, tags: [], external: true, source: "Repology", sourceLabel: "Repology",
+                sourceUrl: page, homepage: firstValue(item, ["homepage", "project_url"], page), packageId: project,
+                searchText: `${name} ${description} ${project}`.toLowerCase()
+            };
+        }
 
-                    if (!search) {
+        function normalizeGitlabProject(raw) {
+            const item = raw && (raw._source || raw.project || raw);
+            const projectId = firstValue(item, ["path_with_namespace", "pathWithNamespace", "id", "name"]);
+            const name = firstValue(item, ["name", "name_with_namespace", "path"], projectId);
+            const page = firstValue(item, ["web_url", "webUrl", "homepage"], projectId ? `https://gitlab.com/${projectId}` : "https://gitlab.com/");
+            if (!name || !projectId) return null;
+            const releasePage = `${page.replace(/\/$/, "")}/-/releases`;
+            const description = firstValue(item, ["description", "tagline"], "Public software project hosted on GitLab.");
+            return {
+                id: `auto-gitlab-${projectId}`, name, developer: firstValue(item, ["namespace.name", "owner.username", "owner.name"], "GitLab project maintainer"),
+                category: "Open Source · GitLab", rating: Number.isFinite(Number(item.star_count)) ? `${Number(item.star_count).toLocaleString()} stars` : "Open source",
+                downloads: "GitLab", icon: firstValue(item, ["avatar_url", "avatarUrl"], "https://appexio.github.io/logo.png"), apk: releasePage,
+                downloadLabel: "View releases", version: "See releases", size: "", android: "Multiple platforms", description,
+                whatsNew: "Open the project's release page to check available installers and release notes.", screenshots: [], featured: false,
+                verified: false, tags: Array.isArray(item.topics) ? item.topics : [], external: true, source: "GitLab", sourceLabel: "GitLab",
+                sourceUrl: page, homepage: page, packageId: projectId,
+                searchText: `${name} ${projectId} ${description} ${(item.topics || []).join(" ")}`.toLowerCase()
+            };
+        }
 
-                        cards.forEach(
-                            function (card) {
+        function normalizeHomebrewApp(raw) {
+            const item = raw && (raw._source || raw.package || raw);
+            const isCask = Boolean(item.token || item.artifacts || item.url && Array.isArray(item.name));
+            const token = firstValue(item, ["token", "name", "full_name", "id"]);
+            const name = Array.isArray(item.name) ? cleanText(item.name[0], token) : firstValue(item, ["name", "full_name", "token"], token);
+            if (!name || !token) return null;
+            const page = `https://formulae.brew.sh/${isCask ? "cask" : "formula"}/${encodeURIComponent(token)}`;
+            const desc = firstValue(item, ["desc", "description"], "Package listed in the Homebrew catalog.");
+            return {
+                id: `auto-homebrew-${isCask ? "cask" : "formula"}-${token}`, name, developer: firstValue(item, ["publisher", "author"], "See official project site"),
+                category: `${isCask ? "macOS app" : "Developer / system package"} · Homebrew`, rating: "Catalog", downloads: "Homebrew", icon: "https://appexio.github.io/logo.png",
+                apk: firstValue(item, ["homepage", "url"], page), downloadLabel: "View package", version: firstValue(item, ["version", "versions.stable"]), size: "",
+                android: isCask ? "macOS" : "macOS / Linux", description: desc, whatsNew: "Homebrew provides package metadata and official project links. Installer availability depends on the package.",
+                screenshots: [], featured: false, verified: false, tags: [], external: true, source: "Homebrew", sourceLabel: "Homebrew",
+                sourceUrl: page, homepage: firstValue(item, ["homepage"], page), packageId: token,
+                searchText: `${name} ${desc} ${token}`.toLowerCase()
+            };
+        }
 
-                                card.style.display =
-                                    "";
+        function normalizeDeveloperPackage(raw, source) {
+            let item = raw && (raw._source || raw.package || raw);
+            let name = "", id = "", page = "", description = "", developer = "", version = "", downloads = "Catalog listing", category = "Developer tools";
+            if (source === "npm") {
+                item = item.package || item;
+                name = firstValue(item, ["name"]); id = name; page = `https://www.npmjs.com/package/${encodeURIComponent(name)}`;
+                description = firstValue(item, ["description"], "JavaScript package listed in the npm registry."); developer = firstValue(item, ["publisher.username", "maintainers.0.username"], "npm publisher"); version = firstValue(item, ["version"]); category = "Developer package · npm";
+            } else if (source === "maven") {
+                name = firstValue(item, ["a", "artifactId"]); const group = firstValue(item, ["g", "groupId"]); id = `${group}:${name}`; page = `https://search.maven.org/artifact/${encodeURIComponent(group)}/${encodeURIComponent(name)}`;
+                description = firstValue(item, ["latestVersion"], "Java/JVM library indexed by Maven Central."); developer = group || "Maven publisher"; version = firstValue(item, ["latestVersion"]); category = "Developer package · Maven Central";
+            } else if (source === "crates") {
+                item = item.crate || item; name = firstValue(item, ["name"]); id = name; page = `https://crates.io/crates/${encodeURIComponent(name)}`;
+                description = firstValue(item, ["description"], "Rust package listed on crates.io."); developer = firstValue(item, ["owner_login", "publisher"], "Rust package maintainer"); version = firstValue(item, ["newest_version", "max_version"]); downloads = Number.isFinite(Number(item.downloads)) ? `${Number(item.downloads).toLocaleString()} downloads` : downloads; category = "Developer package · Rust / crates.io";
+            } else if (source === "nuget") {
+                name = firstValue(item, ["id", "Id"]); id = name; page = `https://www.nuget.org/packages/${encodeURIComponent(name)}`;
+                description = firstValue(item, ["description"], "Package listed in the NuGet gallery."); developer = firstValue(item, ["owners", "Authors", "authors"], "NuGet publisher"); version = firstValue(item, ["version", "Version"]); downloads = Number.isFinite(Number(item.totalDownloads)) ? `${Number(item.totalDownloads).toLocaleString()} downloads` : downloads; category = ".NET developer package · NuGet";
+            } else if (source === "docker") {
+                name = firstValue(item, ["repo_name", "name"]); id = name; page = `https://hub.docker.com/r/${name}`;
+                description = firstValue(item, ["short_description", "description"], "Container image listed on Docker Hub."); developer = firstValue(item, ["namespace"], "Container publisher"); downloads = Number.isFinite(Number(item.pull_count)) ? `${Number(item.pull_count).toLocaleString()} pulls` : downloads; category = "Container image · Docker Hub";
+            } else if (source === "archive") {
+                name = firstValue(item, ["title", "identifier"]); id = firstValue(item, ["identifier"]); page = `https://archive.org/details/${encodeURIComponent(id)}`;
+                description = firstValue(item, ["description"], "Software item indexed by the Internet Archive; availability and rights vary by item."); developer = "See item details"; category = "Software archive · Internet Archive";
+            }
+            if (!name || !id || !page) return null;
+            const tags = [source];
+            return { id: `auto-${source}-${id}`, name, developer, category, rating: "Catalog", downloads, icon: "https://appexio.github.io/logo.png", apk: page, downloadLabel: "View source listing", version, size: "", android: "Developer / software ecosystem", description, whatsNew: "AppExio indexes public metadata. Check the publisher's license, compatibility, and official page before installing or using any package.", screenshots: [], featured: false, verified: false, tags, external: true, source: source === "maven" ? "Maven Central" : source === "docker" ? "Docker Hub" : source === "archive" ? "Internet Archive" : source === "crates" ? "crates.io" : source === "nuget" ? "NuGet" : "npm", sourceLabel: source === "maven" ? "Maven Central" : source === "docker" ? "Docker Hub" : source === "archive" ? "Internet Archive" : source === "crates" ? "crates.io" : source === "nuget" ? "NuGet" : "npm", sourceUrl: page, homepage: page, packageId: id, searchText: `${name} ${developer} ${description} ${id}`.toLowerCase() };
+        }
 
-                            }
-                        );
+        function normalizeProviderResults(payload, provider) {
+            if (provider === "npm") return (payload?.objects || []).map(x => normalizeDeveloperPackage(x, provider)).filter(Boolean);
+            if (provider === "maven") return (payload?.response?.docs || []).map(x => normalizeDeveloperPackage(x, provider)).filter(Boolean);
+            if (provider === "crates") return (payload?.crates || []).map(x => normalizeDeveloperPackage(x, provider)).filter(Boolean);
+            if (provider === "nuget") return (payload?.data || []).map(x => normalizeDeveloperPackage(x, provider)).filter(Boolean);
+            if (provider === "docker") return (payload?.results || []).map(x => normalizeDeveloperPackage(x, provider)).filter(Boolean);
+            if (provider === "archive") return (payload?.response?.docs || []).map(x => normalizeDeveloperPackage(x, provider)).filter(Boolean);
+            return unwrapResults(payload).map(provider === "flathub" ? normalizeFlathubApp : normalizeRepologyApp).filter(Boolean);
+        }
 
-                        return;
+        function appIdentityKey(app) {
+            const name = String(app?.name || "").toLowerCase().replace(/[^a-z0-9]+/g, "").trim();
+            const platformText = `${app?.android || ""} ${app?.category || ""} ${app?.source || ""}`.toLowerCase();
+            const platform = /windows|pc software|winget/.test(platformText) ? "windows" : /android|apk|f-droid/.test(platformText) ? "android" : "general";
+            return `${name}|${platform}`;
+        }
 
-                    }
+        function dedupeApps(apps) {
+            const seen = new Set();
+            const output = [];
+            for (const app of apps) {
+                if (!app || !app.name) continue;
+                const key = appIdentityKey(app);
+                if (!key || key.startsWith("|") || seen.has(key)) continue;
+                seen.add(key);
+                output.push(app);
+            }
+            return output;
+        }
 
+        function combinedCatalog() {
+            const manualKeys = new Set(manualCatalogApps.map(appIdentityKey));
+            return [...manualCatalogApps, ...dedupeApps(automaticCatalogApps).filter(app => !manualKeys.has(appIdentityKey(app)))];
+        }
 
-                    /* SEARCH EACH CARD */
+        function searchableAppText(app) {
+            return [app.name, app.developer, app.category, app.description, app.version, app.android, app.source, ...(Array.isArray(app.tags) ? app.tags : [])].join(" ").toLowerCase();
+        }
 
-                    cards.forEach(
-                        function (card) {
+        function renderCombinedCatalog(query = "") {
+            const gamesGrid = document.getElementById("gamesGrid");
+            if (!gamesGrid) return;
+            const term = String(query || "").trim().toLowerCase();
+            const all = combinedCatalog();
+            const filtered = term ? all.filter(app => searchableAppText(app).includes(term)) : all;
+            renderApps(gamesGrid, filtered);
+            window.apkCityApps = all;
+            const count = document.getElementById("appCount");
+            if (count) count.textContent = `${all.length}+`;
+            if (term && !filtered.length) {
+                updateCatalogStatus(`No local matches yet. Searching connected catalogs for “${term}”…`);
+            } else if (term) {
+                updateCatalogStatus(`Showing ${filtered.length} matching app(s). Live search checks Android, Windows, Linux, macOS and open-source catalogs where available.`);
+            }
+        }
 
-                            const name =
-                                card.dataset.name ||
-                                "";
+        function readInitialCache() {
+            try {
+                const cached = JSON.parse(localStorage.getItem(AUTO_CATALOG_CACHE_KEY) || "null");
+                if (cached && Date.now() - cached.savedAt < AUTO_CATALOG_CACHE_TTL && Array.isArray(cached.apps)) return cached.apps;
+            } catch (_) {}
+            return null;
+        }
 
+        function saveInitialCache(apps) {
+            try { localStorage.setItem(AUTO_CATALOG_CACHE_KEY, JSON.stringify({ savedAt: Date.now(), apps })); } catch (_) {}
+        }
 
-                            const developer =
-                                card.dataset.developer ||
-                                "";
+        async function loadAutomaticCatalogs() {
+            const cached = readInitialCache();
+            if (cached) {
+                automaticCatalogApps = cached;
+                renderCombinedCatalog(document.getElementById("searchInput")?.value || "");
+                updateCatalogStatus(`Loaded ${cached.length} automatically discovered apps from cached multi-source catalog results. Search to discover more.`);
+                return;
+            }
+            updateCatalogStatus("Discovering applications across Android, Windows, Linux, macOS and open-source catalogs…");
+            const tasks = [
+                fetchJson(wingetFeaturedUrl()).then(data => unwrapResults(data).map(normalizeWingetApp).filter(Boolean)),
+                ...["browser", "music", "notes", "games", "privacy"].map(term => fetchJson(fdroidSearchUrl(term)).then(data => unwrapResults(data).map(normalizeFdroidApp).filter(Boolean))),
+                ...["browser", "media player", "text editor"].map(term => fetchJson(providerUrl("flathub", term)).then(data => unwrapResults(data).map(normalizeFlathubApp).filter(Boolean))),
+                ...["firefox", "vlc"].map(term => fetchJson(providerUrl("repology", term)).then(data => unwrapResults(data).map(normalizeRepologyApp).filter(Boolean))),
+                ...["browser", "media", "editor", "game"].map(term => searchHomebrewApps(term)),
+                searchGitlabProjects("popular open source software"),
+                searchGithubReleases("popular open source software"),
+                ...["browser", "video player", "image editor"].map(term => fetchJson(providerUrl("npm", term)).then(data => normalizeProviderResults(data, "npm"))),
+                ...["json parser", "http client"].map(term => fetchJson(providerUrl("maven", term)).then(data => normalizeProviderResults(data, "maven"))),
+                ...["cli", "media"].map(term => fetchJson(providerUrl("crates", term)).then(data => normalizeProviderResults(data, "crates"))),
+                fetchJson(providerUrl("nuget", "json" )).then(data => normalizeProviderResults(data, "nuget")),
+                fetchJson(providerUrl("docker", "nginx")).then(data => normalizeProviderResults(data, "docker")),
+                fetchJson(providerUrl("archive", "open source software")).then(data => normalizeProviderResults(data, "archive"))
+            ];
+            const settled = await Promise.allSettled(tasks);
+            const apps = settled.flatMap(result => result.status === "fulfilled" ? result.value : []);
+            automaticCatalogApps = dedupeApps(apps);
+            saveInitialCache(automaticCatalogApps);
+            renderCombinedCatalog(document.getElementById("searchInput")?.value || "");
+            if (automaticCatalogApps.length) {
+                updateCatalogStatus(`${automaticCatalogApps.length} apps discovered automatically. Your admin-added apps remain included. Search to discover more from F-Droid, WinGet, GitHub Releases, GitLab, Flathub, Repology, Homebrew, npm, Maven Central, crates.io, NuGet, Docker Hub and Internet Archive.`);
+            } else {
+                updateCatalogStatus("Automatic catalogs could not be reached directly. Search still works for your existing apps; if the browser blocks an API, deploy the included Cloudflare Worker and set it in catalog-config.js.", true);
+            }
+        }
 
+        async function searchGithubReleases(query) {
+            const url = `https://api.github.com/search/repositories?q=${encodeURIComponent(query)}+in:name,description&sort=stars&per_page=6`;
+            const result = await fetchJson(url, 10000);
+            const repos = Array.isArray(result.items) ? result.items : [];
+            const candidates = repos.filter(repo => !repo.fork && repo.full_name && repo.owner).slice(0, 4);
+            const releases = await Promise.allSettled(candidates.map(async repo => {
+                const release = await fetchJson(`https://api.github.com/repos/${repo.full_name}/releases/latest`, 8000);
+                return normalizeGithubRelease(repo, release);
+            }));
+            return releases.flatMap(result => result.status === "fulfilled" && result.value ? [result.value] : []);
+        }
 
-                            const category =
-                                card.dataset.category ||
-                                "";
+        async function searchGitlabProjects(query) {
+            const q = encodeURIComponent(query);
+            const url = CATALOG_WORKER_BASE
+                ? `${CATALOG_WORKER_BASE}/api/gitlab/search?q=${q}`
+                : `https://gitlab.com/api/v4/projects?search=${q}&simple=true&per_page=8&order_by=star_count&sort=desc`;
+            const data = await fetchJson(url, 10000);
+            return unwrapResults(data).map(normalizeGitlabProject).filter(Boolean);
+        }
 
+        async function searchAutomaticSources(query, searchId) {
+            const term = String(query || "").trim();
+            if (term.length < 2 || searchId !== latestAutomaticSearchId) return;
+            const cacheKey = term.toLowerCase();
+            const cached = automaticSearchCache.get(cacheKey);
+            if (cached && Date.now() - cached.savedAt < AUTO_SEARCH_CACHE_TTL) {
+                automaticCatalogApps = dedupeApps([...automaticCatalogApps, ...cached.apps]);
+                renderCombinedCatalog(term);
+                updateCatalogStatus(`Showing results for “${term}” from automatic catalogs and your own app library.`);
+                return;
+            }
+            updateCatalogStatus(`Searching Android, Windows, Linux, macOS, GitHub/GitLab, npm, Maven, Rust, NuGet, Docker Hub and Internet Archive for “${term}”…`);
+            const tasks = [
+                fetchJson(fdroidSearchUrl(term)).then(data => unwrapResults(data).map(normalizeFdroidApp).filter(Boolean)),
+                fetchJson(wingetSearchUrl(term)).then(data => unwrapResults(data).map(normalizeWingetApp).filter(Boolean)),
+                fetchJson(providerUrl("flathub", term)).then(data => unwrapResults(data).map(normalizeFlathubApp).filter(Boolean)),
+                fetchJson(providerUrl("repology", term)).then(data => unwrapResults(data).map(normalizeRepologyApp).filter(Boolean)),
+                searchHomebrewApps(term),
+                searchGitlabProjects(term),
+                searchGithubReleases(term),
+                ...["npm", "maven", "crates", "nuget", "docker", "archive"].map(provider => fetchJson(providerUrl(provider, term), 11000).then(data => normalizeProviderResults(data, provider)))
+            ];
+            const settled = await Promise.allSettled(tasks);
+            if (searchId !== latestAutomaticSearchId) return;
+            const results = dedupeApps(settled.flatMap(result => result.status === "fulfilled" ? result.value : []));
+            automaticSearchCache.set(cacheKey, { savedAt: Date.now(), apps: results });
+            const termKey = term.toLowerCase().replace(/[^a-z0-9]+/g, "").trim();
+            const retained = automaticCatalogApps.filter(app => !String(app.name || "").toLowerCase().replace(/[^a-z0-9]+/g, "").trim().includes(termKey));
+            automaticCatalogApps = dedupeApps([...retained, ...results]);
+            renderCombinedCatalog(term);
+            const successfulSources = settled.filter(result => result.status === "fulfilled").length;
+            updateCatalogStatus(results.length
+                ? `Found ${results.length} automatic result(s) for “${term}”. Your manually added apps remain available when they match.`
+                : `No automatic matches for “${term}” were returned. Try another term or check the official stores.`, !successfulSources);
+        }
 
-                            const keywords =
-                                card.dataset.keywords ||
-                                "";
-
-
-                            const searchableText =
-                                name + " " +
-                                developer + " " +
-                                category + " " +
-                                keywords;
-
-
-                            if (
-                                searchableText.includes(
-                                    search
-                                )
-                            ) {
-
-                                card.style.display =
-                                    "";
-
-                            } else {
-
-                                card.style.display =
-                                    "none";
-
-                            }
-
-                        }
-                    );
-
+        function setupSearch(apps) {
+            manualCatalogApps = Array.isArray(apps) ? apps : [];
+            automaticCatalogApps = Array.isArray(automaticCatalogApps) ? automaticCatalogApps : [];
+            const searchInput = document.getElementById("searchInput");
+            if (!searchInput) {
+                renderCombinedCatalog("");
+                return;
+            }
+            const newInput = searchInput.cloneNode(true);
+            searchInput.parentNode.replaceChild(newInput, searchInput);
+            newInput.addEventListener("input", function () {
+                const query = this.value.trim();
+                renderCombinedCatalog(query);
+                clearTimeout(automaticSearchTimer);
+                if (query.length < 2) {
+                    latestAutomaticSearchId++;
+                    if (!query) updateCatalogStatus("Your admin-added apps and automatically discovered catalog apps are shown together.");
+                    return;
                 }
-            );
-
+                const searchId = ++latestAutomaticSearchId;
+                automaticSearchTimer = setTimeout(() => searchAutomaticSources(query, searchId), 450);
+            });
+            renderCombinedCatalog(newInput.value || "");
         }
 
 
@@ -1948,8 +2289,14 @@ footer{border-top-color:rgba(180,196,230,.12);background:rgba(7,10,16,.38)}
 }
 @media(prefers-reduced-motion:reduce){html{scroll-behavior:auto}*,*::before,*::after{animation-duration:.01ms!important;animation-iteration-count:1!important;transition-duration:.01ms!important;scroll-behavior:auto!important}}
 
+
+/* Automatic multi-source catalog additions */
+.auto-catalog-status{margin:0 0 14px;padding:11px 14px;border:1px solid rgba(139,108,255,.18);border-radius:12px;background:rgba(139,108,255,.055);color:var(--muted);font-size:12px;line-height:1.55}
+.auto-catalog-status.is-error{border-color:rgba(255,177,80,.25);background:rgba(255,177,80,.06);color:#e6c49a}
+.app-source-badge{display:inline-flex;align-items:center;max-width:100%;width:max-content;margin-top:7px;padding:3px 6px;border:1px solid rgba(139,108,255,.22);border-radius:5px;color:#b9a8ff;background:rgba(139,108,255,.07);font-size:9px;line-height:1.3;white-space:nowrap}
 </style>
 
+<script src="catalog-config.js"></script>
 </head>
 <body>
 <header class="header"><nav class="nav">
@@ -1960,7 +2307,7 @@ footer{border-top-color:rgba(180,196,230,.12);background:rgba(7,10,16,.38)}
 <main>
 <section class="store-head"><div class="store-title-row"><div><div class="eyebrow">APPEXIO • DIGITAL MARKETPLACE</div><h1 class="store-title">Find something <span>worth downloading.</span></h1><p class="store-sub">Apps, games and PC software — organized in one place.</p></div><a href="android-pc.html" class="get-app"><i class="fa-solid fa-download"></i> Get AppExio App</a></div></section>
 <div class="category-strip"><span class="category active">Pc Apps</span><span class="category">Games</span><span class="category">Android Apps</span><span class="category">PC software</span></div>
-<section class="section" id="games"><div class="section-header"><div class="section-title"><h2>Latest apps & games</h2><p>Freshly added to the AppExio library</p></div><a href="#games" class="view-all">Explore all <i class="fa-solid fa-arrow-right"></i></a></div><div class="apps-grid" id="gamesGrid"><div class="loading-state"><i class="fa-solid fa-spinner fa-spin"></i><span>Loading apps & games...</span></div></div></section>
+<section class="section" id="games"><div class="section-header"><div class="section-title"><h2>Latest apps & games</h2><p>Freshly added to the AppExio library</p></div><a href="#games" class="view-all">Explore all <i class="fa-solid fa-arrow-right"></i></a></div><div id="autoCatalogStatus" class="auto-catalog-status" role="status" aria-live="polite">Loading automatic app catalogs…</div><div class="apps-grid" id="gamesGrid"><div class="loading-state"><i class="fa-solid fa-spinner fa-spin"></i><span>Loading apps & games...</span></div></div></section>
 <section class="feature-row"><div class="feature-main"><div class="feature-label">EDITOR'S DISCOVERY</div><h2>One marketplace.<br>More to explore.</h2><p>Discover Android apps, PC software and games without searching across dozens of websites.</p><a href="#games">Browse library <i class="fa-solid fa-arrow-right"></i></a></div><div class="feature-side"><h3>Get AppExio</h3><p>Take your marketplace with you and discover new software from your Android device or PC.</p><a href="android-pc.html" class="get-app" style="position:absolute;bottom:22px">Download App</a><i class="fa-solid fa-mobile-screen side-icon"></i></div></section>
 <section class="section"><div class="section-header"><div class="section-title"><h2>Built for discovery</h2><p>A cleaner way to browse your software library</p></div></div><div class="info-row"><div class="info-card"><i class="fa-solid fa-layer-group"></i><h3>Everything together</h3><p>Android apps, games and PC software organized in one modern marketplace.</p></div><div class="info-card"><i class="fa-solid fa-bolt"></i><h3>Fresh additions</h3><p>New releases appear directly in the library so the latest content is easy to find.</p></div><div class="info-card"><i class="fa-solid fa-magnifying-glass"></i><h3>Fast discovery</h3><p>Search through applications and software without unnecessary pages or clutter.</p></div></div></section>
 </main>
