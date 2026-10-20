@@ -1382,19 +1382,6 @@ ADMIN
 <span>Website</span>
 
 </button>
-
-
-<button
-    class="header-btn logout-btn"
-    id="logoutBtn"
->
-
-<i class="fa-solid fa-right-from-bracket"></i>
-
-<span>Logout</span>
-
-</button>
-
 </div>
 
 </div>
@@ -1743,6 +1730,20 @@ Select Category
 <option>Lifestyle</option>
 <option>Other</option>
 
+</select>
+
+</div>
+
+<div class="field">
+
+<label>
+Content Type <span>(homepage section)</span>
+</label>
+
+<select id="contentType" required>
+<option value="Apps">Apps</option>
+<option value="Games">Games</option>
+<option value="PC Software">PC Software</option>
 </select>
 
 </div>
@@ -2322,8 +2323,7 @@ import {
 
 const firebaseConfig = {
 
-    apiKey:
-        "AIzaSyABU60kwZik2S1_8Dx7sfT6HfGBIr935Bw",
+    apiKey: "AIzaSyABU60kwZik2S1_8Dx7sfT6HfGBIr935Bw",
 
     authDomain:
         "apkcity-30fa1.firebaseapp.com",
@@ -2346,8 +2346,7 @@ const firebaseConfig = {
 const app =
     initializeApp(firebaseConfig);
 
-const auth =
-    getAuth(app);
+const auth = getAuth(app);
 
 const db =
     getFirestore(app);
@@ -2356,8 +2355,6 @@ const db =
 /* =====================================================
    STATE
 ===================================================== */
-
-let currentUser = null;
 
 let allApps = [];
 
@@ -2396,33 +2393,21 @@ const saveAppText =
 
 
 /* =====================================================
-   AUTH PROTECTION
+   ADMIN ACCESS
+   Firebase Firestore rules require a signed-in user.
+   Keep the admin panel protected rather than weakening
+   database permissions for every visitor.
 ===================================================== */
 
-onAuthStateChanged(
-    auth,
-    user => {
-
-        if (!user) {
-
-            window.location.href =
-                "admin/login.html";
-
-            return;
-
-        }
-
-        currentUser = user;
-
-        console.log(
-            "Admin authenticated:",
-            user.email
-        );
-
-        startAppsListener();
-
+onAuthStateChanged(auth, user => {
+    if (!user) {
+        const loginPath = new URL("login.html", window.location.href);
+        window.location.replace(loginPath.href);
+        return;
     }
-);
+
+    startAppsListener();
+});
 
 
 /* =====================================================
@@ -3014,6 +2999,11 @@ function editApp(id) {
         app.category
     );
 
+    const legacyTypeText = `${app.contentType || ""} ${app.category || ""} ${app.android || ""}`.toLowerCase();
+    document.getElementById("contentType").value =
+        /pc software|windows|desktop|pc\b/.test(legacyTypeText) ? "PC Software" :
+        /\bgames?\b/.test(legacyTypeText) ? "Games" : (app.contentType || "Apps");
+
     document
     .getElementById("homepageSection")
     .value =
@@ -3123,16 +3113,11 @@ saveAppBtn.addEventListener(
 
 async function saveApp() {
 
-    if (!currentUser) {
-
-        showToast(
-            "You are not authenticated."
-        );
-
+    if (!auth.currentUser) {
+        showToast("Please sign in through login.html before managing apps.");
+        window.location.replace(new URL("login.html", window.location.href).href);
         return;
-
     }
-
 
     const data =
         collectFormData();
@@ -3295,6 +3280,9 @@ function collectFormData() {
 
         category:
             get("category"),
+
+        contentType:
+            get("contentType") || "Apps",
 
         version:
             get("version"),
@@ -3734,50 +3722,6 @@ function updatePreview() {
 
     }
 );
-
-
-/* =====================================================
-   LOGOUT
-===================================================== */
-
-document
-    .getElementById(
-        "logoutBtn"
-    )
-    .addEventListener(
-        "click",
-        async () => {
-
-            const confirmed =
-                confirm(
-                    "Log out of APKCity Admin?"
-                );
-
-
-            if (!confirmed) {
-                return;
-            }
-
-
-            try {
-
-                await signOut(auth);
-
-                window.location.href =
-                    "admin/login.html";
-
-            } catch (error) {
-
-                console.error(error);
-
-                showToast(
-                    "Logout failed."
-                );
-
-            }
-
-        }
-    );
 
 
 /* =====================================================
