@@ -148,6 +148,19 @@
             max-width: 1050px;
             margin: auto;
         }
+ .navbar-logo {
+    display: inline-flex;
+    align-items: center;
+    flex-shrink: 0;
+}
+
+.navbar-logo img {
+    width: 42px;
+    height: 42px;
+    object-fit: contain;
+    display: block;
+}
+
 
         .terms-box {
             background: #101218;
@@ -289,16 +302,93 @@
             }
         }
     </style>
+<style id="appexio-index-theme-overrides">
+/* AppExio shared theme — matched to index.html's dark navy, violet and blue palette */
+:root{--appx-bg:#0b0d12;--appx-surface:#121720;--appx-surface2:#191f2c;--appx-line:rgba(180,196,230,.14);--appx-text:#f5f7ff;--appx-muted:#9aa8bf;--appx-brand:#9b7bff;--appx-brand2:#53b7ff;--appx-green:#5ce6a0}
+html{scroll-behavior:smooth; background:var(--appx-bg)}
+body{font-family:Inter,Arial,sans-serif!important;background:radial-gradient(ellipse at 12% -10%,rgba(91,75,183,.16),transparent 34%),radial-gradient(ellipse at 95% 22%,rgba(28,119,166,.09),transparent 28%),var(--appx-bg)!important;color:var(--appx-text)!important;line-height:1.65;-webkit-font-smoothing:antialiased}
+a{transition:color .2s,border-color .2s,background .2s}
+.navbar,header,.header{background:rgba(8,11,18,.88)!important;border-bottom:1px solid var(--appx-line)!important;box-shadow:0 8px 30px rgba(0,0,0,.12);backdrop-filter:blur(20px)}
+.navbar{position:sticky;top:0;z-index:1000}
+.logo{color:var(--appx-text)!important;font-weight:800!important;letter-spacing:-.7px}
+.logo span{color:var(--appx-brand)!important}
+.nav-links a,.back-btn{color:var(--appx-muted)!important;font-weight:600;transition:all .2s}
+.nav-links a:hover,.nav-links a.active,.back-btn:hover{color:#fff!important}
+.menu-btn{color:var(--appx-text)!important}
+.hero{background:radial-gradient(ellipse at 50% 0%,rgba(139,108,255,.16),transparent 65%)!important}
+.hero h1,.page-title,h1{color:var(--appx-text)}
+.hero h1 span,h1 span,.section-title span{background:linear-gradient(100deg,#b7a2ff 5%,#77caff 95%);-webkit-background-clip:text;background-clip:text;color:transparent!important}
+.hero p,.section-text,.updated,.muted,.description{color:var(--appx-muted)!important}
+.container,.main,.layout{color:var(--appx-text)}
+.card,.policy-box,.terms-box,.panel,.login-card,.application-card,.app-preview,.preview-box,.stat,.notice,.mission,.info-card{background:linear-gradient(155deg,rgba(20,27,41,.98),rgba(13,18,29,.98))!important;border:1px solid var(--appx-line)!important;border-radius:18px;box-shadow:0 8px 24px rgba(0,0,0,.14)}
+.card:hover,.application-card:hover{border-color:rgba(155,123,255,.45)!important;box-shadow:0 16px 35px rgba(0,0,0,.25)}
+.policy-section,.terms-section,.section{border-color:var(--appx-line)!important}
+h2,h3,h4,.section-title,.panel-title{color:var(--appx-text)!important}
+p,li,label,.section-text{color:inherit}
+input,select,textarea{background:#101725!important;color:var(--appx-text)!important;border:1px solid var(--appx-line)!important;border-radius:10px}
+input::placeholder,textarea::placeholder{color:#7f8ba2!important}
+input:focus,select:focus,textarea:focus{outline:none!important;border-color:rgba(155,123,255,.72)!important;box-shadow:0 0 0 4px rgba(155,123,255,.12)!important}
+button,.btn,.download-btn,.android-btn,.pc-btn,.login-btn,.btn-primary{background:linear-gradient(120deg,#9270ff,#4f9fff)!important;color:#fff!important;border:1px solid rgba(255,255,255,.12)!important;border-radius:11px;font-weight:700;box-shadow:0 8px 24px rgba(104,91,226,.16);transition:transform .2s,filter .2s}
+button:hover,.btn:hover,.download-btn:hover,.android-btn:hover,.pc-btn:hover,.login-btn:hover,.btn-primary:hover{filter:brightness(1.08);transform:translateY(-1px)}
+.btn-secondary,.side-link,.header-btn{background:rgba(17,23,35,.84)!important;color:var(--appx-muted)!important;border:1px solid var(--appx-line)!important;box-shadow:none}
+footer,.footer{background:transparent!important;border-top:1px solid var(--appx-line)!important;color:var(--appx-muted)!important}
+footer a,.footer a{color:var(--appx-muted)!important}footer a:hover,.footer a:hover{color:var(--appx-brand)!important}
+hr{border-color:var(--appx-line)!important}
+.error-message,.warning{background:rgba(255,90,110,.1)!important;border-color:rgba(255,90,110,.28)!important;color:#ffb2bc!important}
+.success-message,.available{background:rgba(92,230,160,.1)!important;border-color:rgba(92,230,160,.25)!important;color:var(--appx-green)!important}
+@media(max-width:700px){.navbar{padding-left:5%!important;padding-right:5%!important}.nav-links{gap:14px!important}.hero{padding-top:65px!important}.container{width:90%!important}}
+</style>
+
+<style id="appexio-light-theme-only">
+/* Light theme override only: keeps the existing layout, content, links and scripts intact. */
+:root{color-scheme:light;--appx-bg:#f6f8fc;--appx-surface:#ffffff;--appx-surface2:#eef2fb;--appx-line:rgba(35,48,75,.13);--appx-text:#172033;--appx-muted:#5d687c;--appx-brand:#6552d9;--appx-brand2:#1687d9}
+html{background:#f6f8fc!important;color-scheme:light}
+body{background:radial-gradient(ellipse at 12% -10%,rgba(112,91,222,.08),transparent 34%),radial-gradient(ellipse at 95% 22%,rgba(28,135,217,.06),transparent 28%),#f6f8fc!important;color:#263248!important}
+a{color:inherit}
+.navbar,header,.header{background:rgba(255,255,255,.94)!important;border-bottom:1px solid rgba(35,48,75,.12)!important;box-shadow:0 5px 22px rgba(31,45,75,.06)!important;backdrop-filter:blur(18px)}
+.logo{color:#172033!important}.logo span{color:#6552d9!important}
+.nav-links a,.back-btn{color:#59657a!important}.nav-links a:hover,.nav-links a.active,.back-btn:hover{color:#5140c5!important}.menu-btn{color:#172033!important}
+.hero{background:radial-gradient(ellipse at 50% 0%,rgba(139,108,255,.09),transparent 65%)!important}
+.hero::before{opacity:.07!important}
+.hero h1,.page-title,h1{color:#172033!important}
+.hero h1 span,h1 span,.section-title span{background:linear-gradient(100deg,#6552d9 5%,#1687d9 95%);-webkit-background-clip:text;background-clip:text;color:transparent!important}
+.hero p,.section-text,.updated,.muted,.description{color:#5d687c!important}
+.updated{background:rgba(101,82,217,.07)!important;border-color:rgba(101,82,217,.18)!important;color:#5746c4!important}
+.container,.main,.layout{color:#263248!important}
+.card,.policy-box,.terms-box,.panel,.login-card,.application-card,.app-preview,.preview-box,.stat,.notice,.mission,.info-card{background:#fff!important;border:1px solid rgba(35,48,75,.12)!important;border-radius:18px;box-shadow:0 8px 26px rgba(31,45,75,.06)!important}
+.card:hover,.application-card:hover{border-color:rgba(101,82,217,.35)!important;box-shadow:0 14px 32px rgba(31,45,75,.1)!important}
+.policy-section,.terms-section,.section{border-color:rgba(35,48,75,.12)!important}
+.policy-section h2,.terms-section h2,h2,h3,h4,.section-title,.panel-title{color:#172033!important}
+.policy-section h3,.terms-section h3{color:#29364d!important}
+.policy-section p,.terms-section p,.policy-section ul,.terms-section ul,.policy-section li,.terms-section li{color:#4c586d!important}
+.highlight{background:rgba(101,82,217,.07)!important;border-left-color:#6552d9!important}
+.highlight p{color:#344057!important}
+.warning{background:rgba(217,153,34,.09)!important;border-left-color:#d99b22!important;color:#614b22!important}
+.email{color:#5746c4!important}
+input,select,textarea{background:#fff!important;color:#172033!important;border:1px solid rgba(35,48,75,.18)!important;border-radius:10px}
+input::placeholder,textarea::placeholder{color:#8791a2!important}
+input:focus,select:focus,textarea:focus{outline:none!important;border-color:rgba(101,82,217,.7)!important;box-shadow:0 0 0 4px rgba(101,82,217,.1)!important}
+button,.btn,.download-btn,.android-btn,.pc-btn,.login-btn,.btn-primary{background:linear-gradient(120deg,#765fe5,#3298e8)!important;color:#fff!important;border:1px solid rgba(255,255,255,.45)!important;border-radius:11px;font-weight:700;box-shadow:0 7px 20px rgba(101,82,217,.14);transition:transform .2s,filter .2s}
+button:hover,.btn:hover,.download-btn:hover,.android-btn:hover,.pc-btn:hover,.login-btn:hover,.btn-primary:hover{filter:brightness(1.04);transform:translateY(-1px)}
+.btn-secondary,.side-link,.header-btn{background:#f0f3fa!important;color:#4c5870!important;border:1px solid rgba(35,48,75,.12)!important;box-shadow:none}
+footer,.footer{background:transparent!important;border-top:1px solid rgba(35,48,75,.12)!important;color:#657087!important}
+footer strong{color:#172033!important}footer a,.footer a{color:#59657a!important}footer a:hover,.footer a:hover{color:#6552d9!important}
+hr{border-color:rgba(35,48,75,.12)!important}
+.error-message{background:#fff0f1!important;border-color:#f2c6cb!important;color:#a92f42!important}
+.success-message,.available{background:#eafaf2!important;border-color:#b9ebd0!important;color:#187548!important}
+@media(max-width:800px){.nav-links{background:#fff!important;border-bottom:1px solid rgba(35,48,75,.12)!important}}
+@media(max-width:700px){.navbar{padding-left:5%!important;padding-right:5%!important}.nav-links{gap:14px!important}.hero{padding-top:65px!important}.container{width:90%!important}}
+</style>
+
 </head>
 
 <body>
 
     <!-- NAVBAR -->
     <nav class="navbar">
-
-        <a href="index.html" class="logo">
-            APP<span>EXIO</span>
-        </a>
+   <a href="index.html" class="navbar-logo">
+    <img src="favicon.png" alt="AppExio">
+</a>
 
         <div class="nav-links" id="navLinks">
             <a href="index.html">← back to home</a>
