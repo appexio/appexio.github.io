@@ -83,7 +83,7 @@
 
         const firebaseConfig = {
 
-            apiKey: "AIzaSyABU60kwZikS2_1Dx8D7sfT6HfGBIr935Bw",
+            apiKey: "AIzaSyABU60kwZik2S1_8Dx7sfT6HfGBIr935Bw",
 
             authDomain:
                 "apkcity-30fa1.firebaseapp.com",
@@ -235,6 +235,13 @@
                                 data.category ||
                                 "Apps",
 
+                            contentType:
+                                data.contentType ||
+                                inferContentType(data),
+
+                            createdAt:
+                                data.createdAt || null,
+
                             rating:
                                 data.rating ??
                                 "4.8",
@@ -319,18 +326,10 @@
                 );
 
 
-                /* =================================================
-                   RENDER ALL APPS AND GAMES
-                   
-                   IMPORTANT:
-                   We DO NOT filter by category anymore.
-                ================================================= */
-
-                renderApps(
-                    gamesGrid,
-                    apps
-                );
-
+                /* Render the selected view using only admin-added Firestore items. */
+                window.apkCityApps = apps;
+                setupSearch(apps);
+                setupCatalogNavigation();
 
                 /* =================================================
                    UPDATE APP COUNT
@@ -350,20 +349,8 @@
                 }
 
 
-                /* =================================================
-                   SAVE GLOBAL APP DATA
-                ================================================= */
-
-                window.apkCityApps =
-                    apps;
-
-
-                /* =================================================
-                   ENABLE SEARCH
-                ================================================= */
-
-                setupSearch(apps);
-                loadAutomaticCatalogs();
+                /* Admin-managed catalog is the source of truth. */
+                window.apkCityApps = apps;
 
 
             } catch (error) {
@@ -375,9 +362,10 @@
 
 
                                 manualCatalogApps = [];
+                window.apkCityApps = [];
                 setupSearch([]);
-                updateCatalogStatus("Your Firebase app list could not be loaded. Automatic catalogs will still be attempted.", true);
-                loadAutomaticCatalogs();
+                setupCatalogNavigation();
+                updateCatalogStatus("Could not load the admin-added catalog. Check your Firebase connection and permissions.", true);
 
             }
 
@@ -1065,12 +1053,11 @@
                         <i class="fa-solid fa-mobile-screen-button"></i>
 
                         <h3>
-                            No apps available
+                            Nothing here yet
                         </h3>
 
                         <p>
-                            Apps and games will appear here
-                            when they are published.
+                            Items will appear here when they are added in the AppExio admin panel.
                         </p>
 
                     </div>
@@ -1530,6 +1517,12 @@
         }
 
         function renderCombinedCatalog(query = "") {
+            // External catalog cards are intentionally exclusive to For You. The
+            // Apps/Games/PC Software/Latest views continue to show admin records only.
+            if (typeof activeCatalogView !== "undefined" && activeCatalogView !== "for-you") {
+                renderCurrentCatalog();
+                return;
+            }
             const gamesGrid = document.getElementById("gamesGrid");
             if (!gamesGrid) return;
             const term = String(query || "").trim().toLowerCase();
@@ -1541,9 +1534,11 @@
             const count = document.getElementById("appCount");
             if (count) count.textContent = `${all.length}+`;
             if (term && !filtered.length) {
-                updateCatalogStatus(`No local matches yet. Searching connected catalogs for “${term}”…`);
+                updateCatalogStatus(`No matching items yet. Searching connected external catalogs for “${term}”…`);
             } else if (term) {
-                updateCatalogStatus(`Showing ${filtered.length} matching app(s). Live search checks Android, Windows, Linux, macOS and open-source catalogs where available.`);
+                updateCatalogStatus(`Showing ${filtered.length} matching item(s), including available external catalog results.`);
+            } else {
+                updateCatalogStatus(`Showing ${all.length} items from your AppExio library and connected external catalogs.`);
             }
         }
 
@@ -1561,7 +1556,7 @@
 
         async function loadAutomaticCatalogs() {
             const cached = readInitialCache();
-            if (cached) {
+            if (cached && cached.length) {
                 automaticCatalogApps = cached;
                 renderCombinedCatalog(document.getElementById("searchInput")?.value || "");
                 updateCatalogStatus(`Loaded ${cached.length} automatically discovered apps from cached multi-source catalog results. Search to discover more.`);
@@ -1590,7 +1585,9 @@
             ];
             const settled = await Promise.allSettled(tasks);
             const apps = settled.flatMap(result => result.status === "fulfilled" ? result.value : []);
-            automaticCatalogApps = dedupeApps(apps);
+            // Preserve search results that may have arrived while the initial catalog
+            // requests were still running.
+            automaticCatalogApps = dedupeApps([...automaticCatalogApps, ...apps]);
             saveInitialCache(automaticCatalogApps);
             renderCombinedCatalog(document.getElementById("searchInput")?.value || "");
             if (automaticCatalogApps.length) {
@@ -1650,9 +1647,9 @@
             if (searchId !== latestAutomaticSearchId) return;
             const results = dedupeApps(settled.flatMap(result => result.status === "fulfilled" ? result.value : []));
             automaticSearchCache.set(cacheKey, { savedAt: Date.now(), apps: results });
-            const termKey = term.toLowerCase().replace(/[^a-z0-9]+/g, "").trim();
-            const retained = automaticCatalogApps.filter(app => !String(app.name || "").toLowerCase().replace(/[^a-z0-9]+/g, "").trim().includes(termKey));
-            automaticCatalogApps = dedupeApps([...retained, ...results]);
+            // Keep all previously discovered external cards; the current query is
+            // applied only to the visible results, not by deleting cached cards.
+            automaticCatalogApps = dedupeApps([...automaticCatalogApps, ...results]);
             renderCombinedCatalog(term);
             const successfulSources = settled.filter(result => result.status === "fulfilled").length;
             updateCatalogStatus(results.length
@@ -1661,39 +1658,200 @@
             await finishExternalSearchLoading(searchId);
         }
 
-        function setupSearch(apps) {
-            manualCatalogApps = Array.isArray(apps) ? apps : [];
-            automaticCatalogApps = Array.isArray(automaticCatalogApps) ? automaticCatalogApps : [];
-            const searchInput = document.getElementById("searchInput");
-            if (!searchInput) {
-                renderCombinedCatalog("");
-                return;
-            }
-            const newInput = searchInput.cloneNode(true);
-            searchInput.parentNode.replaceChild(newInput, searchInput);
-            newInput.addEventListener("input", function () {
-                const query = this.value.trim();
-                const preservedScrollY = window.scrollY;
-                renderCombinedCatalog(query);
-                requestAnimationFrame(() => {
-                    if (document.activeElement === newInput && Math.abs(window.scrollY - preservedScrollY) > 1) {
-                        window.scrollTo({ top: preservedScrollY, left: window.scrollX, behavior: "auto" });
-                    }
-                });
-                clearTimeout(automaticSearchTimer);
-                if (query.length < 2) {
-                    latestAutomaticSearchId++;
-                    externalSearchLoading = false;
-                    renderExternalSearchLoader();
-                    if (!query) updateCatalogStatus("Your admin-added apps and automatically discovered catalog apps are shown together.");
-                    return;
-                }
-                const searchId = ++latestAutomaticSearchId;
-                automaticSearchTimer = setTimeout(() => searchAutomaticSources(query, searchId), 450);
-            });
-            renderCombinedCatalog(newInput.value || "");
+        let activeCatalogView = "for-you";
+
+        function inferContentType(app) {
+            const explicit = String(app?.contentType || "").trim().toLowerCase();
+            if (explicit === "games" || explicit === "game") return "Games";
+            if (explicit === "pc software" || explicit === "software" || explicit === "pc") return "PC Software";
+            const category = String(app?.category || "").toLowerCase();
+            const device = String(app?.android || "").toLowerCase();
+            const combined = `${category} ${device}`;
+            if (/\b(game|games)\b/.test(category)) return "Games";
+            if (/\b(pc software|windows|desktop|pc)\b/.test(combined)) return "PC Software";
+            return "Apps";
         }
 
+        function createdAtMillis(app) {
+            const value = app?.createdAt;
+            if (!value) return 0;
+            try {
+                if (typeof value.toDate === "function") return value.toDate().getTime();
+                if (typeof value.seconds === "number") return value.seconds * 1000;
+                if (typeof value._seconds === "number") return value._seconds * 1000;
+                if (typeof value === "number") return value < 1e12 ? value * 1000 : value;
+                const parsed = Date.parse(value);
+                return Number.isFinite(parsed) ? parsed : 0;
+            } catch (_) {
+                return 0;
+            }
+        }
+
+        function appsForActiveView() {
+            const all = Array.isArray(manualCatalogApps) ? manualCatalogApps : [];
+            if (activeCatalogView === "for-you") return combinedCatalog();
+            if (activeCatalogView === "apps") return all.filter(app => inferContentType(app) === "Apps");
+            if (activeCatalogView === "games") return all.filter(app => inferContentType(app) === "Games");
+            if (activeCatalogView === "pc-software") return all.filter(app => inferContentType(app) === "PC Software");
+            if (activeCatalogView === "latest") {
+                const now = Date.now();
+                const cutoff = now - (3 * 24 * 60 * 60 * 1000);
+                return all.filter(app => {
+                    const created = createdAtMillis(app);
+                    return created > 0 && created <= now && created >= cutoff;
+                });
+            }
+            return all;
+        }
+
+        function renderCurrentCatalog() {
+            const grid = document.getElementById("gamesGrid");
+            if (!grid) return;
+            const input = document.getElementById("searchInput");
+            const term = String(input?.value || "").trim().toLowerCase();
+            const viewApps = appsForActiveView();
+            const filtered = viewApps.filter(app => !term || searchableAppText(app).includes(term));
+            renderApps(grid, filtered);
+            renderExternalSearchLoader();
+            window.apkCityApps = activeCatalogView === "for-you" ? combinedCatalog() : manualCatalogApps;
+            const count = document.getElementById("appCount");
+            if (count) count.textContent = `${window.apkCityApps.length}+`;
+
+            const title = document.querySelector(".section-title h2");
+            const subtitle = document.querySelector(".section-title p");
+            const headings = {
+                "for-you": ["For you", "All apps, games and PC software added by AppExio."],
+                "apps": ["Apps", "Applications added by the AppExio admin."],
+                "games": ["Games", "Games added by the AppExio admin."],
+                "pc-software": ["PC software", "Desktop software added by the AppExio admin."],
+                "latest": ["Latest releases", "Only items added in the last 3 days."]
+            };
+            if (title && headings[activeCatalogView]) title.textContent = headings[activeCatalogView][0];
+            if (subtitle && headings[activeCatalogView]) subtitle.textContent = headings[activeCatalogView][1];
+
+            const status = document.getElementById("autoCatalogStatus");
+            if (status) {
+                if (activeCatalogView === "latest") {
+                    status.textContent = filtered.length ? `${filtered.length} recent item(s) added in the last 3 days.` : "No recent releases. Items appear here only for 3 days after they are added.";
+                } else if (activeCatalogView === "for-you") {
+                    status.textContent = term
+                        ? `Showing ${filtered.length} matching item(s). Searching connected external catalogs for more results…`
+                        : `Showing ${filtered.length} item(s) from AppExio and connected external catalogs.`;
+                } else {
+                    status.textContent = `Showing ${filtered.length} admin-added item(s).`;
+                }
+                status.classList.remove("is-error");
+                if (!externalSearchLoading) status.classList.remove("is-searching");
+            }
+        }
+
+        function setCatalogView(view) {
+            activeCatalogView = view;
+            if (view !== "for-you") {
+                clearTimeout(automaticSearchTimer);
+                latestAutomaticSearchId++;
+                externalSearchLoading = false;
+                renderExternalSearchLoader();
+            }
+            document.querySelectorAll(".sidebar-link[data-catalog-view], .category[data-catalog-view]").forEach(el => {
+                const active = el.dataset.catalogView === view;
+                el.classList.toggle("selected", active);
+                el.classList.toggle("active", active);
+                if (el.matches(".sidebar-link")) el.setAttribute("aria-current", active ? "page" : "false");
+            });
+            renderCurrentCatalog();
+            // If the visitor returns to For You with a search already entered,
+            // resume external discovery for that query.
+            const searchTerm = String(document.getElementById("searchInput")?.value || "").trim();
+            if (view === "for-you" && searchTerm.length >= 2) {
+                clearTimeout(automaticSearchTimer);
+                automaticSearchTimer = setTimeout(() => {
+                    const searchId = ++latestAutomaticSearchId;
+                    searchAutomaticSources(searchTerm, searchId).catch(error => {
+                        console.warn("AppExio external catalog search failed:", error);
+                    });
+                }, 150);
+            }
+        }
+
+        function setupCatalogNavigation() {
+            const links = document.querySelectorAll(".sidebar-link, .category");
+            links.forEach(el => {
+                const label = String(el.textContent || "").trim().toLowerCase();
+                let view = null;
+                if (el.classList.contains("category")) {
+                    if (label.includes("games")) view = "games";
+                    else if (label.includes("android")) view = "apps";
+                    else if (label.includes("pc")) view = "pc-software";
+                } else if (el.classList.contains("sidebar-link")) {
+                    if (label.includes("for you")) view = "for-you";
+                    else if (label === "apps") view = "apps";
+                    else if (label.includes("games")) view = "games";
+                    else if (label.includes("pc software")) view = "pc-software";
+                    else if (label.includes("latest releases")) view = "latest";
+                }
+                if (!view) return;
+                el.dataset.catalogView = view;
+                if (el.dataset.catalogBound === "true") return;
+                el.dataset.catalogBound = "true";
+                el.addEventListener("click", event => {
+                    event.preventDefault();
+                    setCatalogView(view);
+                    if (window.innerWidth < 760) document.getElementById("games")?.scrollIntoView({ behavior: "smooth", block: "start" });
+                });
+            });
+
+            document.querySelectorAll('a[href="#games"].view-all, .footer-column a[href="#games"]').forEach(el => {
+                if (el.dataset.catalogBound === "true") return;
+                el.dataset.catalogBound = "true";
+                el.addEventListener("click", event => {
+                    event.preventDefault();
+                    setCatalogView("for-you");
+                    document.getElementById("games")?.scrollIntoView({ behavior: "smooth", block: "start" });
+                });
+            });
+            setCatalogView(activeCatalogView);
+        }
+
+        function setupSearch(apps) {
+            manualCatalogApps = Array.isArray(apps) ? apps.map(app => ({
+                ...app,
+                contentType: inferContentType(app)
+            })) : [];
+            window.apkCityApps = manualCatalogApps;
+            const searchInput = document.getElementById("searchInput");
+            if (searchInput && searchInput.dataset.manualSearchBound !== "true") {
+                searchInput.dataset.manualSearchBound = "true";
+                searchInput.addEventListener("input", () => {
+                    renderCurrentCatalog();
+                    // Live external search is only run in For You; category filters
+                    // remain strictly limited to items added through the admin panel.
+                    clearTimeout(automaticSearchTimer);
+                    const term = String(searchInput.value || "").trim();
+                    if (activeCatalogView !== "for-you" || term.length < 2) {
+                        latestAutomaticSearchId++;
+                        externalSearchLoading = false;
+                        renderExternalSearchLoader();
+                        if (activeCatalogView === "for-you" && !term) {
+                            renderCombinedCatalog("");
+                        }
+                        return;
+                    }
+                    automaticSearchTimer = setTimeout(() => {
+                        const searchId = ++latestAutomaticSearchId;
+                        searchAutomaticSources(term, searchId).catch(error => {
+                            console.warn("AppExio external catalog search failed:", error);
+                            if (searchId === latestAutomaticSearchId) {
+                                externalSearchLoading = false;
+                                renderExternalSearchLoader();
+                                updateCatalogStatus("External catalogs are temporarily unavailable. Your AppExio library is still available.", true);
+                            }
+                        });
+                    }, 350);
+                });
+            }
+            renderCurrentCatalog();
+        }
 
         /* =====================================================
            ESCAPE HTML
@@ -1743,20 +1901,20 @@
            START APKCITY
         ====================================================== */
 
-        if (
-            document.readyState ===
-            "loading"
-        ) {
-
-            document.addEventListener(
-                "DOMContentLoaded",
-                loadApps
-            );
-
-        } else {
-
+        function startAppExio() {
+            // Load the admin-managed Firestore library and external public catalogs
+            // independently so an outage in either source does not block the other.
             loadApps();
+            loadAutomaticCatalogs().catch(error => {
+                console.warn("AppExio automatic catalogs could not be loaded:", error);
+                updateCatalogStatus("External catalogs are temporarily unavailable. Your AppExio library is still available.", true);
+            });
+        }
 
+        if (document.readyState === "loading") {
+            document.addEventListener("DOMContentLoaded", startAppExio, { once: true });
+        } else {
+            startAppExio();
         }
 
     </script>
@@ -2411,17 +2569,42 @@ footer{border-top-color:rgba(180,196,230,.12);background:rgba(7,10,16,.38)}
 </style>
 
 <script src="catalog-config.js"></script>
+<style id="appexio-playstore-inspired">
+/* AppExio marketplace refresh — Play Store-inspired, with original AppExio branding */
+:root{--bg:#f7f8fa;--surface:#fff;--surface2:#f1f3f4;--line:#e5e7eb;--text:#202124;--muted:#5f6368;--brand:#168653;--brand2:#34a853;--green:#188038}
+html{scroll-behavior:smooth;scroll-padding-top:88px}body{background:#fff;color:var(--text);padding-bottom:0;font-family:Inter,Arial,sans-serif}
+.header{height:76px;background:rgba(255,255,255,.97);border-bottom:1px solid #e8eaed;backdrop-filter:blur(14px)}.nav{max-width:none;padding:0 30px;gap:28px}.logo{font-size:21px;color:#202124;letter-spacing:-.8px}.logo span{color:#168653}.logo-icon{width:40px;height:40px;border-radius:12px;background:#e8f5e9}.nav-links{gap:4px}.nav-links a:not(.admin-lock){font-size:14px;color:#5f6368;border-radius:22px;padding:10px 14px}.nav-links a.active,.nav-links a:hover{background:#e8f5e9;color:#137333}.nav-search{width:min(520px,40vw);height:48px;background:#f1f3f4;border:1px solid transparent;border-radius:28px;padding:0 20px}.nav-search:focus-within{background:#fff;border-color:#168653;box-shadow:0 1px 4px #00000014}.nav-search input{font-size:14px;color:#202124}.nav-search input::placeholder{color:#5f6368}.nav-search i{color:#5f6368}
+.store-sidebar{position:fixed;z-index:90;left:0;top:76px;bottom:0;width:232px;padding:22px 12px;background:#fff;border-right:1px solid #edf0f2;overflow-y:auto}.sidebar-link{display:flex;align-items:center;gap:18px;min-height:48px;padding:0 18px;margin:3px 0;border-radius:0 26px 26px 0;color:#3c4043;font-size:14px;font-weight:500}.sidebar-link i{width:20px;text-align:center;font-size:17px;color:#5f6368}.sidebar-link:hover,.sidebar-link.selected{background:#e8f5e9;color:#137333}.sidebar-link.selected i{color:#137333}.sidebar-divider{height:1px;background:#e8eaed;margin:18px 12px}.sidebar-caption{padding:0 18px 8px;font-size:10px;letter-spacing:1px;color:#80868b;font-weight:800}
+main{max-width:none;margin:0 0 0 232px;padding:0 36px}.store-head{padding:32px 0 22px}.eyebrow{color:#188038;letter-spacing:1.1px}.store-title{font-size:32px;line-height:1.2;letter-spacing:-1px;color:#202124}.store-title span{color:#188038}.store-sub{font-size:14px;color:#5f6368}.get-app{background:#188038;color:#fff;border-radius:24px;padding:12px 20px;font-size:13px}.get-app:hover{background:#137333}.category-strip{gap:10px;padding:10px 0 26px}.category{padding:10px 18px;background:#fff;border:1px solid #dadce0;color:#3c4043;border-radius:9px;font-size:13px}.category:hover,.category.active{background:#e8f5e9;color:#137333;border-color:#a8dab5}
+.section{padding:10px 0 38px}.section-header{margin-bottom:20px}.section-title h2{font-size:22px;letter-spacing:-.35px;font-weight:600;color:#202124}.section-title p{font-size:13px;color:#5f6368}.view-all{color:#188038;font-size:13px}.apps-grid{grid-template-columns:repeat(3,minmax(0,1fr));gap:12px}.app-card{display:grid;grid-template-columns:72px minmax(0,1fr);grid-template-rows:auto auto auto;align-content:center;column-gap:16px;row-gap:5px;min-height:118px;padding:18px 16px;background:#fff;border:1px solid #e8eaed;border-radius:14px;box-shadow:0 1px 2px #00000008;transition:background .18s,border-color .18s,box-shadow .18s}.app-card:hover{transform:none;background:#f8fbf8;border-color:#b7d9c0;box-shadow:0 2px 8px #0000000d}.app-icon{grid-column:1;grid-row:1/4;width:72px;height:72px;margin:0;border-radius:17px;background:#f1f3f4;align-self:center}.app-name{grid-column:2;grid-row:1;align-self:end;font-size:14px;font-weight:600;color:#202124;white-space:normal;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}.app-developer{grid-column:2;grid-row:2;font-size:12px;color:#5f6368;margin-top:0}.app-meta{grid-column:2;grid-row:3;margin-top:2px;font-size:11px;color:#5f6368}.rating{color:#3c4043}.rating i{color:#188038}.downloads{border-color:#dadce0}.verified{top:9px;right:9px;width:18px;height:18px;background:#188038;color:#fff;font-size:8px}.app-source-badge{grid-column:2;grid-row:4;justify-self:start;color:#137333;background:#e8f5e9;border-color:#c5e1cc}.loading-state,.empty-state{color:#5f6368}.empty-state h3{color:#202124}
+.feature-row{gap:18px;margin-bottom:32px}.feature-main,.feature-side{border-radius:18px;border:1px solid #e8eaed;min-height:190px}.feature-main{background:linear-gradient(120deg,#e8f5e9,#f4f9f5 72%);padding:30px}.feature-main:after{background:radial-gradient(circle,rgba(52,168,83,.18),transparent 67%)}.feature-label{color:#137333}.feature-main h2{color:#202124;font-size:30px}.feature-main p{color:#5f6368;font-size:13px}.feature-main a{border-radius:22px;background:#188038;color:white;font-size:12px}.feature-side{background:linear-gradient(145deg,#f1f8e9,#f6fbf6);padding:26px}.feature-side h3{color:#202124}.feature-side p{color:#5f6368;font-size:13px;max-width:75%}.feature-side .side-icon{color:#188038;opacity:.12}.info-card{background:#fff;border:1px solid #e8eaed;border-radius:14px;padding:22px}.info-card i{color:#188038}.info-card h3{color:#202124}.info-card p{color:#5f6368;font-size:12px}footer{background:#fff;border-top:1px solid #e8eaed;margin-top:18px}.footer-inner{max-width:none;margin-left:232px;padding:30px 36px}.footer-brand p,.footer-column a{color:#5f6368}.footer-column h4{color:#202124}.copyright{border-color:#e8eaed;color:#80868b}.developer-credit{margin-left:232px;background:#fff;color:#80868b}.developer-credit strong{color:#188038}
+.app-details-modal{background:rgba(32,33,36,.45)}.app-details-dialog{background:#fff;color:#202124;border:1px solid #e8eaed;border-radius:22px}.details-close{background:#f1f3f4;color:#3c4043}.details-developer{color:#5f6368}.details-badge{background:#f1f3f4;color:#3c4043;border-color:#e8eaed}.details-stat{background:#f8f9fa;border-color:#e8eaed}.details-stat strong{color:#202124}.details-stat span,.details-section p{color:#5f6368}.details-section h3{color:#202124}.details-tags span{background:#e8f5e9;color:#137333}.details-download{background:#188038;color:#fff}
+@media(max-width:1150px){.apps-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.store-sidebar{width:205px}main{margin-left:205px}.footer-inner{margin-left:205px}.developer-credit{margin-left:205px}}
+@media(max-width:850px){.store-sidebar{width:76px;padding:18px 8px}.sidebar-link{justify-content:center;padding:0;gap:0;border-radius:16px}.sidebar-link span,.sidebar-caption{display:none}.sidebar-divider{margin:14px 8px}main{margin-left:76px;padding:0 22px}.footer-inner{margin-left:76px;padding:28px 22px}.developer-credit{margin-left:76px}.nav{padding:0 18px;gap:12px}.nav-links{display:none}.nav-links.mobile-open{display:flex;position:absolute;top:76px;left:76px;right:0;background:#fff;border-bottom:1px solid #e8eaed;padding:12px;flex-direction:column;align-items:stretch;z-index:999}.mobile-menu{background:#f1f3f4;border-color:#e8eaed;color:#3c4043}.feature-row{grid-template-columns:1fr}}
+@media(max-width:600px){.header{height:auto;min-height:110px}.nav{min-height:110px;grid-template-columns:auto 1fr auto;gap:9px;padding:10px 12px}.logo{font-size:16px}.logo-icon{width:34px;height:34px}.nav-search{height:42px;padding:0 12px;width:100%}.nav-links.mobile-open{top:110px;left:64px}.store-sidebar{top:110px;width:64px;padding:14px 5px}.sidebar-link{min-height:44px}.main{padding:0}main{margin-left:64px;padding:0 14px}.store-head{padding:22px 0 14px}.store-title{font-size:24px}.store-title-row{align-items:flex-start;flex-direction:column}.get-app{font-size:11px;padding:10px 14px}.category-strip{padding-bottom:18px}.apps-grid{grid-template-columns:1fr;gap:9px}.app-card{min-height:106px;padding:14px 12px;grid-template-columns:62px minmax(0,1fr);column-gap:12px}.app-icon{width:62px;height:62px;border-radius:14px}.app-name{font-size:13px}.app-developer{font-size:11px}.app-meta{font-size:10px}.feature-main{padding:22px}.feature-main h2{font-size:25px}.feature-side{min-height:175px}.info-row{grid-template-columns:1fr}.footer-inner{margin-left:64px;padding:24px 14px}.footer-grid{grid-template-columns:1fr 1fr;gap:22px}.copyright{gap:10px;flex-direction:column}.developer-credit{margin-left:64px}}
+</style>
 </head>
 <body>
 <header class="header"><nav class="nav">
 <a href="index.html" class="logo"><div class="logo-icon"><img src="logo.png" alt="AppExio"></div>APP<span>EXIO</span></a>
-<div class="nav-links"><a href="#" class="active">Discover</a><a href="#games">Apps</a><a href="#games">Games</a></div>
+<div class="nav-links"><a href="#" class="active">Discover</a></div>
 <div class="search-wrapper"><div class="nav-search"><i class="fa-solid fa-magnifying-glass"></i><input id="searchInput" type="text" placeholder="Search apps, games & software..."></div></div><button class="mobile-menu"><i class="fa-solid fa-bars"></i></button>
 </nav></header>
+
+<aside class="store-sidebar" aria-label="Store navigation">
+  <a class="sidebar-link selected" data-catalog-view="for-you" href="#games"><i class="fa-solid fa-house"></i><span>For you</span></a>
+  <a class="sidebar-link" data-catalog-view="apps" href="#games"><i class="fa-solid fa-mobile-screen-button"></i><span>Apps</span></a>
+  <a class="sidebar-link" data-catalog-view="games" href="#games"><i class="fa-solid fa-gamepad"></i><span>Games</span></a>
+  <a class="sidebar-link" data-catalog-view="pc-software" href="#games"><i class="fa-solid fa-laptop"></i><span>PC software</span></a>
+  <a class="sidebar-link" href="https://appexio.github.io/AppExio.apk"><i class="fa-solid fa-download"></i><span>AppExio.apk</span></a>
+  <div class="sidebar-divider"></div><p class="sidebar-caption">DISCOVER APPEXIO</p>
+  <a class="sidebar-link" data-catalog-view="latest" href="#games"><i class="fa-solid fa-fire"></i><span>Latest releases</span></a>
+  <a class="sidebar-link" href="about-us.html"><i class="fa-regular fa-circle-question"></i><span>About</span></a>
+</aside>
 <main>
-<section class="store-head"><div class="store-title-row"><div><div class="eyebrow">APPEXIO • DIGITAL MARKETPLACE</div><h1 class="store-title">Find something <span>worth downloading.</span></h1><p class="store-sub">Apps, games and PC software — organized in one place.</p></div><a href="android-pc.html" class="get-app"><i class="fa-solid fa-download"></i> Get AppExio App</a></div></section>
-<div class="category-strip"><span class="category active">Pc Apps</span><span class="category">Games</span><span class="category">Android Apps</span><span class="category">PC software</span></div>
-<section class="section" id="games"><div class="section-header"><div class="section-title"><h2>Latest apps & games</h2><p>Freshly added to the AppExio library</p></div><a href="#games" class="view-all">Explore all <i class="fa-solid fa-arrow-right"></i></a></div><div id="autoCatalogStatus" class="auto-catalog-status" role="status" aria-live="polite">Loading automatic app catalogs…</div><div class="catalog-note">Connected sources may provide direct installer files, package-manager entries, or official store pages. Availability depends on each publisher and platform. AppExio does not mirror files unless redistribution is authorized.</div><div class="apps-grid" id="gamesGrid"><div class="loading-state"><i class="fa-solid fa-spinner fa-spin"></i><span>Loading apps & games...</span></div></div></section>
+<section class="store-head"><div class="store-title-row"><div><div class="eyebrow">APPEXIO • DIGITAL MARKETPLACE</div><h1 class="store-title">Find something <span>worth downloading.</span></h1><p class="store-sub">Apps, games and PC software — organized in one place.</p></div></div></section>
+<div class="category-strip"><span class="category">Pc Apps</span><span class="category">Games</span><span class="category">Android Apps</span><span class="category">PC software</span></div>
+<section class="section" id="games"><div class="section-header"><div class="section-title"><h2>Latest apps & games</h2><p>Freshly added to the AppExio library</p></div><a href="#games" class="view-all">Explore all <i class="fa-solid fa-arrow-right"></i></a></div><div id="autoCatalogStatus" class="auto-catalog-status" role="status" aria-live="polite">Loading apps added by AppExio…</div><div class="catalog-note">For You includes your AppExio library and results from connected public app and software catalogs.</div><div class="apps-grid" id="gamesGrid"><div class="loading-state"><i class="fa-solid fa-spinner fa-spin"></i><span>Loading apps & games...</span></div></div></section>
 <section class="feature-row"><div class="feature-main"><div class="feature-label">EDITOR'S DISCOVERY</div><h2>One marketplace.<br>More to explore.</h2><p>Discover Android apps, PC software and games without searching across dozens of websites.</p><a href="#games">Browse library <i class="fa-solid fa-arrow-right"></i></a></div><div class="feature-side"><h3>Get AppExio</h3><p>Take your marketplace with you and discover new software from your Android device or PC.</p><a href="android-pc.html" class="get-app" style="position:absolute;bottom:22px">Download App</a><i class="fa-solid fa-mobile-screen side-icon"></i></div></section>
 <section class="section"><div class="section-header"><div class="section-title"><h2>Built for discovery</h2><p>A cleaner way to browse your software library</p></div></div><div class="info-row"><div class="info-card"><i class="fa-solid fa-layer-group"></i><h3>Everything together</h3><p>Android apps, games and PC software organized in one modern marketplace.</p></div><div class="info-card"><i class="fa-solid fa-bolt"></i><h3>Fresh additions</h3><p>New releases appear directly in the library so the latest content is easy to find.</p></div><div class="info-card"><i class="fa-solid fa-magnifying-glass"></i><h3>Fast discovery</h3><p>Search through applications and software without unnecessary pages or clutter.</p></div></div></section>
 </main>
