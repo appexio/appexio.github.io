@@ -631,7 +631,7 @@ input:focus {
 
             Appexio Admin Panel ·
 
-            <a href="../index.html">
+            <a href="index.html">
                 Back to website
             </a>
 
@@ -652,7 +652,9 @@ import {
 
 import {
     getAuth,
-    signInWithEmailAndPassword
+    signInWithEmailAndPassword,
+    setPersistence,
+    browserLocalPersistence
 } from "https://www.gstatic.com/firebasejs/12.18.0/firebase-auth.js";
 
 
@@ -662,8 +664,7 @@ import {
 
 const firebaseConfig = {
 
-    apiKey:
-        "AIzaSyABU60kwZik2S1_8Dx7sfT6HfGBIr935Bw",
+    apiKey: "AIzaSyABU60kwZik2S1_8Dx7sfT6HfGBIr935Bw",
 
     authDomain:
         "apkcity-30fa1.firebaseapp.com",
@@ -818,6 +819,8 @@ form.addEventListener(
 
         try {
 
+            // Keep the session available when admin.html loads on the next page.
+            await setPersistence(auth, browserLocalPersistence);
             await signInWithEmailAndPassword(
                 auth,
                 emailValue,
@@ -830,7 +833,7 @@ form.addEventListener(
              *
              * Your admin dashboard is:
              *
-             * ../admin.html
+             * admin.html
              *
              * because this login file is:
              *
@@ -846,7 +849,7 @@ form.addEventListener(
                 () => {
 
                     window.location.href =
-                        "../admin.html";
+                        "admin.html";
 
                 },
                 500
@@ -914,7 +917,7 @@ form.addEventListener(
                 default:
 
                     message =
-                        "Login failed. Please check your credentials.";
+                        "Login failed (" + (error.code || "unknown-error") + "). Check Firebase Authentication settings and the browser console.";
 
             }
 
