@@ -1,0 +1,2116 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+
+<meta charset="UTF-8">
+
+<meta
+    name="viewport"
+    content="width=device-width, initial-scale=1.0"
+>
+
+<title>Upload Console</title>
+
+<meta
+    name="robots"
+    content="noindex,nofollow"
+>
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+
+<link
+    href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap"
+    rel="stylesheet"
+>
+
+<link
+    rel="stylesheet"
+    href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.7.2/css/all.min.css"
+>
+
+<style>
+
+/* =====================================================
+   RESET
+===================================================== */
+
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+:root {
+
+    --bg: #080a0f;
+    --panel: #10141c;
+    --card: #151a23;
+    --input: #0c1017;
+
+    --border: rgba(255,255,255,.08);
+
+    --text: #f5f7fb;
+    --muted: #9299a8;
+
+    --primary: #7c5cff;
+    --primary2: #5d7cff;
+
+    --green: #31d47c;
+    --red: #ff5c6c;
+    --yellow: #ffc857;
+
+}
+
+html {
+    scroll-behavior: smooth;
+}
+
+body {
+
+    font-family: "Inter", sans-serif;
+
+    color: var(--text);
+
+    background:
+        radial-gradient(
+            circle at 80% 0%,
+            rgba(124,92,255,.13),
+            transparent 35%
+        ),
+        radial-gradient(
+            circle at 10% 100%,
+            rgba(93,124,255,.07),
+            transparent 30%
+        ),
+        var(--bg);
+
+    min-height: 100vh;
+
+}
+
+button,
+input,
+textarea,
+select {
+    font-family: inherit;
+}
+
+button {
+    cursor: pointer;
+}
+
+
+/* =====================================================
+   HEADER
+===================================================== */
+
+.header {
+
+    height: 72px;
+
+    position: sticky;
+    top: 0;
+
+    z-index: 100;
+
+    display: flex;
+    align-items: center;
+
+    padding: 0 4%;
+
+    background:
+        rgba(8,10,15,.88);
+
+    backdrop-filter: blur(20px);
+
+    border-bottom:
+        1px solid var(--border);
+
+}
+
+.header-inner {
+
+    width: 100%;
+    max-width: 1450px;
+
+    margin: auto;
+
+    display: flex;
+    align-items: center;
+
+}
+
+.logo {
+
+    display: flex;
+    align-items: center;
+
+    gap: 10px;
+
+    font-size: 20px;
+    font-weight: 800;
+
+}
+
+.logo-icon {
+
+    width: 38px;
+    height: 38px;
+
+    display: grid;
+    place-items: center;
+
+    border-radius: 11px;
+
+    background: transparent;
+
+}
+
+.logo span {
+    color: #9c87ff;
+}
+
+.admin-label {
+
+    padding: 5px 9px;
+
+    margin-left: 4px;
+
+    border-radius: 7px;
+
+    background:
+        rgba(124,92,255,.1);
+
+    border:
+        1px solid
+        rgba(124,92,255,.2);
+
+    color: #ad9cff;
+
+    font-size: 9px;
+    font-weight: 700;
+
+}
+
+.header-right {
+
+    margin-left: auto;
+
+    display: flex;
+    align-items: center;
+
+    gap: 8px;
+
+}
+
+.header-btn {
+
+    height: 38px;
+
+    padding: 0 13px;
+
+    border-radius: 9px;
+
+    border:
+        1px solid var(--border);
+
+    background: var(--card);
+
+    color: #d9dce4;
+
+    font-size: 10px;
+    font-weight: 600;
+
+}
+
+.header-btn:hover {
+    border-color: rgba(124,92,255,.35);
+}
+
+.logout-btn:hover {
+    color: #ff8b95;
+    border-color: rgba(255,92,108,.25);
+}
+
+
+/* =====================================================
+   LAYOUT
+===================================================== */
+
+.layout {
+
+    width: 92%;
+    max-width: 1450px;
+
+    margin: auto;
+
+    display: grid;
+
+    grid-template-columns: 1fr;
+
+    min-height:
+        calc(100vh - 72px);
+
+}
+
+
+/* =====================================================
+   SIDEBAR
+===================================================== */
+
+.sidebar {
+
+    padding:
+        30px 15px 30px 0;
+
+    border-right:
+        1px solid var(--border);
+
+}
+
+.sidebar-title {
+
+    color: #626978;
+
+    font-size: 9px;
+
+    font-weight: 700;
+
+    letter-spacing: 1px;
+
+    text-transform: uppercase;
+
+    margin:
+        10px 12px 12px;
+
+}
+
+.side-link {
+
+    width: 100%;
+
+    height: 43px;
+
+    display: flex;
+    align-items: center;
+
+    gap: 12px;
+
+    padding: 0 13px;
+
+    margin-bottom: 4px;
+
+    border: none;
+
+    border-radius: 10px;
+
+    background: transparent;
+
+    color: var(--muted);
+
+    text-align: left;
+
+    font-size: 11px;
+
+    font-weight: 600;
+
+}
+
+.side-link i {
+
+    width: 18px;
+
+    text-align: center;
+
+}
+
+.side-link.active,
+.side-link:hover {
+
+    background:
+        rgba(124,92,255,.1);
+
+    color: #b3a4ff;
+
+}
+
+
+/* =====================================================
+   MAIN
+===================================================== */
+
+.main {
+
+    padding:
+        35px 0 70px 35px;
+
+    min-width: 0;
+
+}
+
+.page-title {
+
+    margin-bottom: 25px;
+
+}
+
+.page-title h1 {
+
+    font-size: 28px;
+
+    letter-spacing: -.8px;
+
+    margin-bottom: 7px;
+
+}
+
+.page-title p {
+
+    color: var(--muted);
+
+    font-size: 11px;
+
+}
+
+
+/* =====================================================
+   STATS
+===================================================== */
+
+.stats {
+
+    display: grid;
+
+    grid-template-columns:
+        repeat(4,1fr);
+
+    gap: 12px;
+
+    margin-bottom: 22px;
+
+}
+
+.logo-icon img {
+width: 100%;
+height: 100%;
+object-fit: contain;
+display: block;
+border-radius: 12px;
+}
+
+
+.stat {
+
+    padding: 17px;
+
+    border:
+        1px solid var(--border);
+
+    border-radius: 14px;
+
+    background:
+        rgba(16,20,28,.82);
+
+}
+
+.stat-top {
+
+    display: flex;
+    align-items: center;
+
+    justify-content: space-between;
+
+    margin-bottom: 10px;
+
+}
+
+.stat-icon {
+
+    width: 31px;
+    height: 31px;
+
+    display: grid;
+    place-items: center;
+
+    border-radius: 8px;
+
+    background:
+        rgba(124,92,255,.1);
+
+    color: #a492ff;
+
+    font-size: 11px;
+
+}
+
+.stat-label {
+
+    color: var(--muted);
+
+    font-size: 9px;
+
+}
+
+.stat-value {
+
+    font-size: 21px;
+
+    font-weight: 800;
+
+}
+
+
+/* =====================================================
+   MANAGEMENT TOOLBAR
+===================================================== */
+
+.management {
+
+    display: none;
+
+}
+
+.management.active {
+    display: block;
+}
+
+.toolbar {
+
+    display: flex;
+
+    align-items: center;
+
+    gap: 10px;
+
+    margin-bottom: 17px;
+
+}
+
+.search-box {
+
+    position: relative;
+
+    flex: 1;
+
+}
+
+.search-box i {
+
+    position: absolute;
+
+    left: 13px;
+    top: 50%;
+
+    transform:
+        translateY(-50%);
+
+    color: #5d6573;
+
+    font-size: 11px;
+
+}
+
+.search-box input {
+
+    height: 43px;
+
+    padding-left: 37px;
+
+}
+
+
+/* =====================================================
+   APP LIST
+===================================================== */
+
+.apps-list {
+
+    display: grid;
+
+    gap: 10px;
+
+}
+
+.empty-state {
+
+    padding: 60px 20px;
+
+    text-align: center;
+
+    border:
+        1px dashed
+        rgba(255,255,255,.1);
+
+    border-radius: 15px;
+
+    color: var(--muted);
+
+}
+
+.empty-state i {
+
+    display: block;
+
+    font-size: 30px;
+
+    margin-bottom: 14px;
+
+    color: #4d5563;
+
+}
+
+.empty-state strong {
+
+    display: block;
+
+    color: #dce0e8;
+
+    font-size: 13px;
+
+    margin-bottom: 6px;
+
+}
+
+.empty-state span {
+
+    font-size: 9px;
+
+}
+
+
+.app-row {
+
+    display: grid;
+
+    grid-template-columns:
+        58px
+        minmax(0,1fr)
+        auto;
+
+    gap: 14px;
+
+    align-items: center;
+
+    padding: 14px;
+
+    background:
+        var(--panel);
+
+    border:
+        1px solid var(--border);
+
+    border-radius: 14px;
+
+}
+
+.app-row-icon {
+
+    width: 58px;
+    height: 58px;
+
+    object-fit: cover;
+
+    border-radius: 14px;
+
+    background: #1b202b;
+
+}
+
+.app-row-info {
+    min-width: 0;
+}
+
+.app-row-name {
+
+    display: flex;
+
+    align-items: center;
+
+    gap: 7px;
+
+    font-size: 13px;
+
+    font-weight: 700;
+
+    margin-bottom: 5px;
+
+}
+
+.verified {
+
+    color: #5d9dff;
+
+    font-size: 10px;
+
+}
+
+.app-row-meta {
+
+    display: flex;
+
+    flex-wrap: wrap;
+
+    gap: 6px;
+
+}
+
+.meta {
+
+    padding: 4px 7px;
+
+    border-radius: 5px;
+
+    background: #171d27;
+
+    color: var(--muted);
+
+    font-size: 8px;
+
+}
+
+.app-row-tags {
+
+    color: #666f7e;
+
+    font-size: 8px;
+
+    margin-top: 6px;
+
+    white-space: nowrap;
+
+    overflow: hidden;
+
+    text-overflow: ellipsis;
+
+}
+
+.app-actions {
+
+    display: flex;
+
+    gap: 7px;
+
+}
+
+.icon-btn {
+
+    width: 36px;
+    height: 36px;
+
+    display: grid;
+    place-items: center;
+
+    border-radius: 9px;
+
+    border:
+        1px solid var(--border);
+
+    background: #171d27;
+
+    color: #aeb5c2;
+
+    font-size: 10px;
+
+}
+
+.icon-btn:hover {
+    border-color: rgba(124,92,255,.35);
+    color: #c8beff;
+}
+
+.icon-btn.delete:hover {
+    border-color: rgba(255,92,108,.3);
+    color: #ff7d88;
+    background: rgba(255,92,108,.06);
+}
+
+
+/* =====================================================
+   FORM
+===================================================== */
+
+.form-management {
+    display: block;
+}
+
+.form-management.hidden {
+    display: block;
+}
+
+.form-layout {
+
+    display: grid;
+
+    grid-template-columns:
+        minmax(0,1fr)
+        320px;
+
+    gap: 18px;
+
+}
+
+.panel {
+
+    background:
+        var(--panel);
+
+    border:
+        1px solid var(--border);
+
+    border-radius: 17px;
+
+    padding: 22px;
+
+    margin-bottom: 18px;
+
+}
+
+.panel-title {
+
+    display: flex;
+
+    align-items: center;
+
+    gap: 9px;
+
+    font-size: 14px;
+
+    font-weight: 700;
+
+    margin-bottom: 20px;
+
+}
+
+.panel-title i {
+    color: #9a86ff;
+}
+
+.form-grid {
+
+    display: grid;
+
+    grid-template-columns:
+        repeat(2,1fr);
+
+    gap: 15px;
+
+}
+
+.field {
+
+    display: flex;
+
+    flex-direction: column;
+
+    gap: 7px;
+
+}
+
+.field.full {
+    grid-column: 1 / -1;
+}
+
+.field label {
+
+    color: #c5c9d2;
+
+    font-size: 10px;
+
+    font-weight: 600;
+
+}
+
+.field label span {
+
+    color: #686f7d;
+
+    font-weight: 400;
+
+}
+
+input,
+textarea,
+select {
+
+    width: 100%;
+
+    outline: none;
+
+    border:
+        1px solid var(--border);
+
+    background:
+        var(--input);
+
+    color: white;
+
+    border-radius: 9px;
+
+    font-size: 11px;
+
+}
+
+input,
+select {
+
+    height: 43px;
+
+    padding: 0 12px;
+
+}
+
+textarea {
+
+    min-height: 110px;
+
+    padding: 12px;
+
+    resize: vertical;
+
+    line-height: 1.6;
+
+}
+
+input:focus,
+textarea:focus,
+select:focus {
+
+    border-color:
+        rgba(124,92,255,.55);
+
+    box-shadow:
+        0 0 0 3px
+        rgba(124,92,255,.08);
+
+}
+
+
+/* =====================================================
+   SCREENSHOTS
+===================================================== */
+
+.screenshot-list {
+
+    display: grid;
+
+    gap: 12px;
+
+}
+
+.screenshot-field {
+
+    display: grid;
+
+    grid-template-columns:
+        35px 1fr;
+
+    gap: 10px;
+
+    align-items: center;
+
+}
+
+.shot-number {
+
+    width: 35px;
+    height: 35px;
+
+    border-radius: 9px;
+
+    display: grid;
+    place-items: center;
+
+    background: #1a2030;
+
+    color: #9d8cff;
+
+    font-size: 11px;
+
+    font-weight: 700;
+
+}
+
+
+/* =====================================================
+   CHECKS
+===================================================== */
+
+.checks {
+
+    display: flex;
+
+    gap: 20px;
+
+    flex-wrap: wrap;
+
+}
+
+.check {
+
+    display: flex;
+
+    align-items: center;
+
+    gap: 8px;
+
+    color: #b8bdc8;
+
+    font-size: 10px;
+
+}
+
+.check input {
+
+    width: 16px;
+    height: 16px;
+
+    accent-color:
+        var(--primary);
+
+}
+
+
+/* =====================================================
+   ACTIONS
+===================================================== */
+
+.actions {
+
+    display: flex;
+
+    gap: 10px;
+
+    margin-bottom: 18px;
+
+}
+
+.btn {
+
+    height: 47px;
+
+    padding:
+        0 20px;
+
+    border: none;
+
+    border-radius: 10px;
+
+    display: inline-flex;
+
+    align-items: center;
+
+    justify-content: center;
+
+    gap: 8px;
+
+    font-size: 11px;
+
+    font-weight: 700;
+
+}
+
+.btn-primary {
+
+    color: white;
+
+    background:
+        linear-gradient(
+            135deg,
+            var(--primary),
+            var(--primary2)
+        );
+
+    box-shadow:
+        0 10px 25px
+        rgba(124,92,255,.18);
+
+}
+
+.btn-secondary {
+
+    color: #c8ccd5;
+
+    background:
+        #181e28;
+
+    border:
+        1px solid var(--border);
+
+}
+
+.btn-danger {
+
+    color: #ff7c88;
+
+    background:
+        rgba(255,92,108,.08);
+
+    border:
+        1px solid
+        rgba(255,92,108,.15);
+
+}
+
+
+/* =====================================================
+   PREVIEW
+===================================================== */
+
+.preview-box {
+
+    position: sticky;
+
+    top: 95px;
+
+}
+
+.preview-label {
+
+    color: var(--muted);
+
+    font-size: 9px;
+
+    text-transform: uppercase;
+
+    letter-spacing: 1px;
+
+    margin-bottom: 12px;
+
+}
+
+.app-preview {
+
+    background:
+        #0c1017;
+
+    border:
+        1px solid var(--border);
+
+    border-radius: 15px;
+
+    padding: 16px;
+
+}
+
+.preview-top {
+
+    display: flex;
+
+    gap: 13px;
+
+    align-items: center;
+
+}
+
+.preview-icon {
+
+    width: 65px;
+    height: 65px;
+
+    border-radius: 16px;
+
+    object-fit: cover;
+
+    background: #1a1f29;
+
+}
+
+.preview-name {
+
+    font-size: 14px;
+
+    font-weight: 700;
+
+    margin-bottom: 5px;
+
+}
+
+.preview-developer {
+
+    color: var(--muted);
+
+    font-size: 9px;
+
+}
+
+.preview-category {
+
+    display: inline-block;
+
+    margin-top: 7px;
+
+    padding: 4px 7px;
+
+    border-radius: 5px;
+
+    background:
+        rgba(124,92,255,.1);
+
+    color: #a995ff;
+
+    font-size: 8px;
+
+}
+
+.preview-info {
+
+    display: grid;
+
+    grid-template-columns:
+        repeat(2,1fr);
+
+    gap: 7px;
+
+    margin-top: 15px;
+
+}
+
+.preview-info div {
+
+    padding: 9px;
+
+    border-radius: 8px;
+
+    background: #131821;
+
+}
+
+.preview-info strong {
+
+    display: block;
+
+    font-size: 10px;
+
+    margin-bottom: 3px;
+
+}
+
+.preview-info span {
+
+    color: var(--muted);
+
+    font-size: 8px;
+
+}
+
+
+/* =====================================================
+   TOAST
+===================================================== */
+
+.toast {
+
+    position: fixed;
+
+    right: 25px;
+    bottom: 25px;
+
+    max-width: 350px;
+
+    padding:
+        13px 17px;
+
+    border-radius: 10px;
+
+    background:
+        #181e28;
+
+    border:
+        1px solid var(--border);
+
+    color: white;
+
+    font-size: 10px;
+
+    transform:
+        translateY(100px);
+
+    opacity: 0;
+
+    transition: .3s;
+
+    z-index: 9999;
+
+}
+
+.toast.show {
+
+    transform:
+        translateY(0);
+
+    opacity: 1;
+
+}
+
+
+/* =====================================================
+   MOBILE
+===================================================== */
+
+@media(max-width:1000px) {
+
+    .layout {
+        grid-template-columns: 1fr;
+    }
+
+    .sidebar {
+        display: none;
+    }
+
+    .main {
+        padding:
+            30px 0 60px;
+    }
+
+}
+
+@media(max-width:800px) {
+
+    .stats {
+        grid-template-columns:
+            repeat(2,1fr);
+    }
+
+    .form-layout {
+        grid-template-columns: 1fr;
+    }
+
+    .preview-box {
+        position: static;
+    }
+
+}
+
+@media(max-width:650px) {
+
+    .form-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .field.full {
+        grid-column: auto;
+    }
+
+    .app-row {
+        grid-template-columns:
+            48px 1fr;
+    }
+
+    .app-row-icon {
+        width: 48px;
+        height: 48px;
+    }
+
+    .app-actions {
+        grid-column: 1 / -1;
+        width: 100%;
+    }
+
+    .app-actions .icon-btn {
+        flex: 1;
+    }
+
+    .toolbar {
+        flex-direction: column;
+        align-items: stretch;
+    }
+
+}
+
+@media(max-width:500px) {
+
+    .stats {
+        grid-template-columns: 1fr;
+    }
+
+    .panel {
+        padding: 16px;
+    }
+
+    .actions {
+        flex-direction: column;
+    }
+
+    .btn {
+        width: 100%;
+    }
+
+    .header-btn span {
+        display: none;
+    }
+
+}
+
+</style>
+
+</head>
+
+
+<body>
+
+
+<!-- =====================================================
+     HEADER
+===================================================== -->
+
+<header class="header">
+
+<div class="header-inner">
+
+<div class="logo">
+
+<div class="logo-icon">
+    <img src="upload.jpg" alt="Appexio Logo">
+</div>
+
+
+App<span>Exio</span>
+
+<div class="admin-label">
+User Console
+</div>
+
+</div>
+
+
+<div class="header-right">
+
+<button
+    class="header-btn"
+    onclick="window.open('../index.html','_blank')"
+>
+
+<i class="fa-solid fa-globe"></i>
+
+<span>Back to Home</span>
+
+</button>
+</div>
+
+</div>
+
+</header>
+
+
+
+<div class="layout">
+
+
+<!-- =====================================================
+     SIDEBAR
+===================================================== -->
+
+
+
+
+
+<!-- =====================================================
+     MAIN
+===================================================== -->
+
+<main class="main">
+
+
+<div class="page-title">
+
+<h1 id="pageHeading">
+Add Application
+</h1>
+
+<p id="pageDescription">
+Add any Application, Software, games, mod... to AppExio
+</p>
+
+</div>
+
+<!-- Add Application form -->
+<section class="form-management" id="formManagement">
+
+
+<div class="form-layout">
+
+
+<div>
+
+
+<!-- BASIC INFORMATION -->
+
+<section class="panel">
+
+<div class="panel-title">
+
+<i class="fa-solid fa-circle-info"></i>
+
+<span id="formTitle">
+Basic Information
+</span>
+
+</div>
+
+
+<div class="form-grid">
+
+
+<div class="field">
+
+<label>
+App Name
+</label>
+
+<input
+    id="appName"
+    type="text"
+    placeholder="eg; whatsapp, minecraft"
+>
+
+</div>
+
+
+<div class="field">
+
+<label>
+Developer
+</label>
+
+<input
+    id="developer"
+    type="text"
+    placeholder="eg; WhatsApp LLC"
+>
+
+</div>
+
+
+<div class="field">
+
+<label>
+Category
+</label>
+
+<select id="category">
+
+<option value="">
+Select Category
+</option>
+
+<option>Apps</option>
+<option>Games</option>
+<option>Social</option>
+<option>Communication</option>
+<option>Entertainment</option>
+<option>Music & Audio</option>
+<option>Video Players</option>
+<option>Photography</option>
+<option>Tools</option>
+<option>Productivity</option>
+<option>Education</option>
+<option>Finance</option>
+<option>Lifestyle</option>
+<option>Other</option>
+
+</select>
+
+</div>
+
+<div class="field">
+
+<label>
+Content Type <span>(homepage section)</span>
+</label>
+
+<select id="contentType" required>
+<option value="Apps">Apps</option>
+<option value="Games">Games</option>
+<option value="PC Software">PC Software</option>
+</select>
+
+</div>
+
+
+<div class="field">
+
+<label>
+Version
+</label>
+
+<input
+    id="version"
+    type="text"
+    placeholder="eg; 2.0, 1.0"
+>
+
+</div>
+
+
+<div class="field">
+
+<label>
+Size
+</label>
+
+<input
+    id="size"
+    type="text"
+    placeholder="eg; 2mb, 2gb"
+>
+
+</div>
+
+
+<div class="field">
+
+<label>
+Device
+</label>
+
+<input
+    id="android"
+    type="text"
+    placeholder="eg; android, pc"
+>
+
+</div>
+
+
+<div class="field">
+
+<label>
+Rating
+</label>
+
+<input
+    id="rating"
+    type="number"
+    min="0"
+    max="5"
+    step="0.1"
+    value="4.5"
+>
+
+</div>
+
+
+<div class="field">
+
+<label>
+Compatible
+</label>
+
+<input
+    id="downloads"
+    type="text"
+    placeholder="eg; OS version, Android version"
+>
+
+</div>
+
+</div>
+
+</section>
+
+
+
+<!-- SEARCH TAGS -->
+
+<section class="panel">
+
+<div class="panel-title">
+
+<i class="fa-solid fa-tags"></i>
+
+Search Tags
+
+</div>
+
+
+<div class="field">
+
+<label>
+Search Keywords
+</label>
+
+<input
+    id="tags"
+    type="text"
+    placeholder="whatsapp, chat, messaging, calling, gaming, mods"
+>
+
+<small style="
+color:#626978;
+font-size:9px;
+">
+Separate keywords with commas.
+</small>
+
+</div>
+
+</section>
+
+
+
+<!-- GITHUB FILES -->
+
+<section class="panel">
+
+<div class="panel-title">
+
+<i class="fa-solid fa-link"></i>
+
+Actual INFO
+
+</div>
+
+
+<div class="form-grid">
+
+
+<div class="field full">
+
+<label>
+Application Picture
+</label>
+
+<input
+    id="icon"
+    type="text"
+    placeholder="eg; https://appexio.github.io/assets/pictures/whatsapp.png/jpg/webp..."
+>
+
+</div>
+
+
+<div class="field full">
+
+<label>
+Application LINK
+</label>
+
+<input
+    id="apk"
+    type="text"
+    placeholder="eg; https://appexio.github.io/assets/whatsapp.apk/exe/rar/zip..."
+>
+
+</div>
+
+</div>
+
+
+<br>
+
+
+<div class="field">
+
+<label>
+Screenshots
+<span>
+Maximum 3
+</span>
+</label>
+
+
+<div class="screenshot-list">
+
+
+<div class="screenshot-field">
+
+<div class="shot-number">
+1
+</div>
+
+<input
+    id="screenshot1"
+    type="text"
+    placeholder="https://appexio.github.io/assets/screenshots/app/1.jpg"
+>
+
+</div>
+
+
+<div class="screenshot-field">
+
+<div class="shot-number">
+2
+</div>
+
+<input
+    id="screenshot2"
+    type="text"
+    placeholder="https://appexio.github.io/assets/screenshots/app/2.jpg"
+>
+
+</div>
+
+
+<div class="screenshot-field">
+
+<div class="shot-number">
+3
+</div>
+
+<input
+    id="screenshot3"
+    type="text"
+    placeholder="https://appexio.github.io/assets/screenshots/app/3.jpg"
+>
+
+</div>
+
+
+</div>
+
+</div>
+
+</section>
+
+
+
+<!-- DESCRIPTION -->
+
+<section class="panel">
+
+<div class="panel-title">
+
+<i class="fa-solid fa-align-left"></i>
+
+Description
+
+</div>
+
+
+<textarea
+    id="description"
+    placeholder="Write the application description..."
+></textarea>
+
+</section>
+
+
+
+<!-- WHAT'S NEW -->
+
+<section class="panel">
+
+<div class="panel-title">
+
+<i class="fa-solid fa-wand-magic-sparkles"></i>
+
+What's New
+
+</div>
+
+
+<textarea
+    id="whatsNew"
+    placeholder="New features&#10;Performance improvements&#10;Bug fixes"
+></textarea>
+
+</section>
+
+
+
+<!-- BUTTONS -->
+
+<div class="actions">
+
+
+<button
+    class="btn btn-primary"
+    id="saveAppBtn"
+>
+
+<i class="fa-solid fa-plus"></i>
+
+<span id="saveAppText">
+ADD APP
+</span>
+
+</button>
+
+
+<button
+    class="btn btn-danger"
+    id="resetBtn"
+>
+
+<i class="fa-solid fa-rotate-left"></i>
+
+RESET
+
+</button>
+
+
+</div>
+
+
+</div>
+
+
+
+<!-- PREVIEW -->
+
+<aside class="preview-box">
+
+<div class="preview-label">
+Live Preview
+</div>
+
+
+<div class="app-preview">
+
+
+<div class="preview-top">
+
+
+<img
+    id="previewIcon"
+    class="preview-icon"
+    alt="App"
+>
+
+
+<div>
+
+<div
+    id="previewName"
+    class="preview-name"
+>
+App Name
+</div>
+
+
+<div
+    id="previewDeveloper"
+    class="preview-developer"
+>
+Developer
+</div>
+
+
+<div
+    id="previewCategory"
+    class="preview-category"
+>
+Category
+</div>
+
+</div>
+
+</div>
+
+
+<div class="preview-info">
+
+
+<div>
+
+<strong id="previewVersion">
+—
+</strong>
+
+<span>
+Version
+</span>
+
+</div>
+
+
+<div>
+
+<strong id="previewSize">
+—
+</strong>
+
+<span>
+Size
+</span>
+
+</div>
+
+
+<div>
+
+<strong id="previewRating">
+—
+</strong>
+
+<span>
+Rating
+</span>
+
+</div>
+
+
+<div>
+
+<strong id="previewAndroid">
+—
+</strong>
+
+<span>
+Android
+</span>
+
+</div>
+
+
+</div>
+
+</div>
+
+</aside>
+
+
+</div>
+
+</section>
+
+
+</main>
+
+</div>
+
+
+
+<div
+    class="toast"
+    id="toast"
+></div>
+
+
+
+<!-- =====================================================
+     FIREBASE
+===================================================== -->
+
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/12.18.0/firebase-app.js";
+import { getFirestore, collection, addDoc, serverTimestamp } from "https://www.gstatic.com/firebasejs/12.18.0/firebase-firestore.js";
+
+const firebaseConfig = {
+    apiKey: "AIzaSyABU60kwZik2S1_8Dx7sfT6HfGBIr935Bw",
+    authDomain: "apkcity-30fa1.firebaseapp.com",
+    projectId: "apkcity-30fa1",
+    storageBucket: "apkcity-30fa1.firebasestorage.app",
+    messagingSenderId: "965202080311",
+    appId: "1:965202080311:web:6419bf702de3dcf024c5b2"
+};
+
+const app = initializeApp(firebaseConfig);
+const db = getFirestore(app);
+const saveAppBtn = document.getElementById("saveAppBtn");
+const originalButtonHTML = saveAppBtn.innerHTML;
+
+function value(id) {
+    return (document.getElementById(id)?.value || "").trim();
+}
+
+function collectFormData() {
+    return {
+        name: value("appName"),
+        developer: value("developer"),
+        category: value("category"),
+        contentType: value("contentType") || "Apps",
+        version: value("version"),
+        size: value("size"),
+        android: value("android"),
+        rating: Number(value("rating")) || 0,
+        downloads: value("downloads"),
+        icon: value("icon"),
+        apk: value("apk"),
+        screenshots: [value("screenshot1"), value("screenshot2"), value("screenshot3")].filter(Boolean),
+        tags: value("tags").split(",").map(tag => tag.trim()).filter(Boolean),
+        description: value("description"),
+        whatsNew: value("whatsNew"),
+        verified: document.getElementById("verified")?.checked ?? false
+    };
+}
+
+function showToast(message) {
+    const toast = document.getElementById("toast");
+    toast.textContent = message;
+    toast.classList.add("show");
+    clearTimeout(window.__adminToastTimer);
+    window.__adminToastTimer = setTimeout(() => toast.classList.remove("show"), 4500);
+}
+
+function validateData(data) {
+    if (!data.name) return showToast("Please enter the app name."), false;
+    if (!data.developer) return showToast("Please enter the developer."), false;
+    if (!data.category) return showToast("Please select a category."), false;
+    if (!data.icon) return showToast("Please enter the app picture URL."), false;
+    if (!data.apk) return showToast("Please enter the APK URL."), false;
+    if (data.rating < 0 || data.rating > 5) return showToast("Rating must be between 0 and 5."), false;
+    return true;
+}
+
+async function saveApp() {
+    const data = collectFormData();
+    if (!validateData(data)) return;
+
+    saveAppBtn.disabled = true;
+    saveAppBtn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i><span>ADDING...</span>';
+    try {
+        await addDoc(collection(db, "apps"), {
+            ...data,
+            createdAt: serverTimestamp(),
+            updatedAt: serverTimestamp()
+        });
+        showToast("App added successfully!");
+        clearForm(false);
+    } catch (error) {
+        console.error("Firestore error:", error);
+        if (error?.code === "permission-denied") {
+            showToast("Firebase denied this write. Firestore Rules require permission for adding apps; this cannot be fixed by removing the HTML login redirect.");
+        } else {
+            showToast("Failed to add app: " + (error?.message || "Unknown error"));
+        }
+    } finally {
+        saveAppBtn.disabled = false;
+        saveAppBtn.innerHTML = originalButtonHTML;
+    }
+}
+
+function clearForm(confirmFirst = true) {
+    if (confirmFirst && !confirm("Clear all fields?")) return;
+    document.querySelectorAll("#formManagement input[type='text'], #formManagement input[type='number'], #formManagement textarea").forEach(el => { el.value = ""; });
+    document.getElementById("category").value = "";
+    document.getElementById("contentType").value = "Apps";
+    document.getElementById("rating").value = "4.5";
+    const verifiedCheckbox = document.getElementById("verified");
+    if (verifiedCheckbox) verifiedCheckbox.checked = true;
+    updatePreview();
+}
+
+document.getElementById("resetBtn").addEventListener("click", () => clearForm(true));
+saveAppBtn.addEventListener("click", saveApp);
+
+function updatePreview() {
+    const get = id => document.getElementById(id)?.value || "";
+    document.getElementById("previewName").textContent = get("appName") || "App Name";
+    document.getElementById("previewDeveloper").textContent = get("developer") || "Developer";
+    document.getElementById("previewCategory").textContent = get("category") || "Category";
+    document.getElementById("previewVersion").textContent = get("version") || "—";
+    document.getElementById("previewSize").textContent = get("size") || "—";
+    document.getElementById("previewAndroid").textContent = get("android") || "—";
+    document.getElementById("previewRating").textContent = get("rating") ? "★ " + get("rating") : "—";
+    const icon = get("icon");
+    const previewIcon = document.getElementById("previewIcon");
+    if (icon) previewIcon.src = icon;
+    else previewIcon.removeAttribute("src");
+}
+
+["appName", "developer", "category", "version", "size", "android", "rating", "icon"].forEach(id => {
+    const el = document.getElementById(id);
+    el.addEventListener("input", updatePreview);
+    el.addEventListener("change", updatePreview);
+});
+
+let toastTimer = null;
+</script>
+
+</body>
+
+</html>
