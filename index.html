@@ -2437,6 +2437,77 @@ main{max-width:1560px;padding:0 34px}
 .view-all{display:inline-flex;align-items:center;gap:8px;padding:8px 0;color:#c0b1ff;font-size:12px}
 .view-all i{transition:transform .2s}.view-all:hover i{transform:translateX(4px)}
 .apps-grid{grid-template-columns:repeat(6,minmax(0,1fr));gap:16px}
+.archive-upload-btn {
+display: inline-flex;
+align-items: center;
+justify-content: center;
+gap: 9px;
+padding: 10px 13px;
+color: #000;
+text-decoration: none;
+font-size: 15px;
+font-weight: 600;
+white-space: nowrap;
+border-radius: 5px;
+flex-shrink: 0;
+box-sizing: border-box;
+transition: background 0.2s, color 0.2s;
+}
+
+.archive-upload-btn i {
+font-size: 23px;
+color: #000;
+}
+
+.archive-upload-btn span {
+color: #000;
+}
+
+.archive-upload-btn:hover {
+background: #eaeaea;
+color: #000;
+}
+
+@media (max-width: 600px) {
+.archive-upload-btn {
+gap: 4px;
+padding: 8px 5px;
+font-size: 11px;
+flex-shrink: 0;
+}
+
+.archive-upload-btn i {
+font-size: 17px;
+}
+}
+@media (max-width: 600px) {
+.nav {
+gap: 6px;
+}
+
+.archive-upload-btn {
+margin-left: 0;
+margin-right: 0;
+}
+
+.search-wrapper {
+min-width: 0;
+flex: 1;
+}
+
+.nav-search {
+min-width: 0;
+}
+
+.nav-search input {
+min-width: 0;
+width: 100%;
+}
+
+.mobile-menu {
+flex-shrink: 0;
+}
+}
 .app-card{padding:15px;border-radius:19px;background:linear-gradient(155deg,rgba(20,27,41,.98),rgba(13,18,29,.98));border:1px solid rgba(180,196,230,.12);box-shadow:0 6px 18px rgba(0,0,0,.08);transition:transform .22s ease,border-color .22s ease,box-shadow .22s ease,background .22s ease}
 .app-card:hover{transform:translateY(-5px);background:linear-gradient(155deg,#1a2335,#111827);border-color:rgba(155,123,255,.52);box-shadow:0 16px 35px rgba(0,0,0,.27),0 0 0 1px rgba(155,123,255,.07),0 0 25px rgba(139,108,255,.07)}
 .app-icon{width:72px;height:72px;border-radius:18px;margin-bottom:13px;background:#202a3a;box-shadow:0 5px 16px rgba(0,0,0,.18)}
@@ -2655,7 +2726,12 @@ main{max-width:none;margin:0 0 0 232px;padding:0 36px}.store-head{padding:32px 0
 <header class="header"><nav class="nav">
 <a href="index.html" class="logo"><div class="logo-icon"><img src="logo.png" alt="AppExio"></div>APP<span>EXIO</span></a>
 <div class="nav-links"><a href="#" class="active">Discover</a></div>
-<div class="search-wrapper"><div class="nav-search"><i class="fa-solid fa-magnifying-glass"></i><input id="searchInput" type="text" placeholder="Search apps, games & software..."></div></div><button class="mobile-menu"><i class="fa-solid fa-bars"></i></button>
+<div class="search-wrapper"><div class="nav-search"><i class="fa-solid fa-magnifying-glass"></i><input id="searchInput" type="text" placeholder="Search apps, games & software..."></div></div>
+<a href="upload.html" class="archive-upload-btn">
+    <i class="fa-solid fa-upload"></i>
+    <span>UPLOAD</span>
+</a>
+<button class="mobile-menu"><i class="fa-solid fa-bars"></i></button>
 </nav></header>
 
 <aside class="store-sidebar" aria-label="Store navigation">
