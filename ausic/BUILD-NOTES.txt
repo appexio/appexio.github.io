@@ -1,0 +1,12 @@
+Ausic v4 — static GitHub Pages edition
+=====================================
+- Removed start.bat, Node server, package.json, and server-only API routes.
+- Replaced all same-origin /api/* calls with browser requests to Audius and LRCLIB.
+- Changed site asset, manifest, and service-worker paths to relative URLs for GitHub project pages.
+- Expanded desktop main content to use a two-column shell (sidebar + wide music canvas).
+- Desktop track cards use 4 columns on regular desktop screens and 5 on extra-wide screens.
+- Mobile search results/cards are full-width horizontal rows.
+- Player details/queue/lyrics use an optional drawer instead of permanently shrinking the main content.
+- Added a mobile Preferences shortcut and Explore bottom navigation item.
+
+Verification performed: syntax checks and static path checks. Live streaming still depends on the public Audius API and network availability.

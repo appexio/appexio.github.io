@@ -1,0 +1,115 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+  <meta name="theme-color" content="#080a08">
+  <meta name="description" content="Ausic — discover and stream audio, save your favorites, build playlists, and play MP3s from your device.">
+  <title>Ausic — music, uninterrupted</title>
+  <link rel="manifest" href="manifest.webmanifest">
+  <link rel="icon" href="favicon.svg" type="image/svg+xml">
+  <link rel="preconnect" href="https://api.audius.co">
+  <link rel="preconnect" href="https://lrclib.net">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <div class="app-shell">
+    <aside class="sidebar" aria-label="Main navigation">
+      <a class="brand" href="#home" aria-label="Ausic Home">
+  <span class="brand-mark">
+    <img src="logo.png" alt="Ausic logo" class="ausic-logo">
+  </span>
+  <span class="brand-word">ausic<span class="brand-dot">.</span></span>
+</a>
+
+      <div class="side-scroll">
+        <div class="nav-label">DISCOVER</div>
+        <nav class="nav-group">
+          <button class="nav-link active" data-page="home"><span class="nav-icon">⌂</span><span>Home</span></button>
+          <button class="nav-link" data-page="search"><span class="nav-icon">⌕</span><span>Search</span></button>
+          <button class="nav-link" data-page="explore"><span class="nav-icon">✦</span><span>Explore</span></button>
+        </nav>
+        <div class="nav-label nav-label-gap">YOUR MUSIC</div>
+        <nav class="nav-group">
+          <button class="nav-link" data-page="liked"><span class="nav-icon">♡</span><span>Liked songs</span><span class="nav-count" id="liked-count">0</span></button>
+          <button class="nav-link" data-page="history"><span class="nav-icon">◷</span><span>Recently played</span></button>
+          <button class="nav-link" data-page="local"><span class="nav-icon">♫</span><span>Local audio</span></button>
+          <button class="nav-link" data-page="playlists"><span class="nav-icon">▤</span><span>Your playlists</span></button>
+        </nav>
+        <div class="playlist-heading"><span class="nav-label">PLAYLISTS</span><button class="tiny-icon-btn" id="new-playlist-side" title="Create playlist" aria-label="Create playlist">＋</button></div>
+        <div class="sidebar-playlists" id="sidebar-playlists"></div>
+      </div>
+      <div class="sidebar-bottom">
+        <div class="api-status" id="api-status"><span class="status-dot"></span><span>Connecting to audio…</span></div>
+        <button class="settings-link" id="open-settings"><span class="nav-icon">⚙</span><span>Preferences</span></button>
+<div class="profile-mini"><div class="profile-avatar"><img src="logo.png" alt="Ausic" class="ausic-logo"></div><div class="profile-copy"><b>Ausic listener</b><small>Personal library</small></div><span class="profile-menu-dot">•••</span></div>
+
+      </div>
+    </aside>
+
+    <main class="main-area">
+      <header class="topbar">
+        <a class="brand mobile-brand" href="#home" aria-label="Ausic Home">
+  <span class="brand-mark">
+    <img src="logo.png" alt="Ausic logo" class="ausic-logo">
+  </span>
+  <span class="brand-word">ausic<span class="brand-dot">.</span></span>
+</a>
+
+        <div class="topbar-arrows"><button class="circle-btn" id="go-back" aria-label="Go back">‹</button><button class="circle-btn" id="go-forward" aria-label="Go forward">›</button></div>
+        <form class="global-search" id="search-form" role="search">
+          <span class="search-glass">⌕</span><input id="search-input" type="search" placeholder="Songs, artists, genres, moods…" autocomplete="off" aria-label="Search music"><kbd>↵</kbd>
+        </form>
+        <div class="topbar-actions"><button class="circle-btn" id="preferences-top" aria-label="Preferences" title="Preferences">⚙</button><button class="circle-btn" id="theme-toggle" aria-label="Toggle theme" title="Toggle theme">☼</button><button class="pill-btn" id="import-audio-top" aria-label="Import music"><span>＋</span> Import music</button></div>
+      </header>
+      <div id="page-content" class="page-content" tabindex="-1">
+        <section class="loading-home"><div class="loader-orb"></div><p>Getting your sound ready…</p></section>
+      </div>
+      <footer class="footer-note">Ausic · music, uninterrupted <span>Audio discovery powered by Audius · Your likes and playlists stay in this browser.</span></footer>
+    </main>
+
+    <aside class="player-panel" id="player-panel" aria-label="Now playing">
+      <div class="player-panel-head"><div><span class="eyebrow">NOW PLAYING</span><h2>Your sound, up close</h2></div><button class="like-btn panel-head-like" id="now-like" type="button" title="Like this song" aria-label="Like this song">♡</button><button class="circle-btn panel-close" id="close-player-panel" type="button" aria-label="Minimize player and return to browsing" title="Minimize player"><span aria-hidden="true">⌄</span><small>MINIMIZE</small></button></div>
+      <div class="audio-stage" id="audio-stage" aria-label="Audio artwork">
+        <div class="stage-glow"></div>
+        <div class="stage-art" id="stage-art"><span>♫</span></div>
+        <div class="stage-wave" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div>
+      </div>
+      <div class="now-track">
+        <div class="now-art" id="now-art"><span>♫</span></div>
+        <div class="now-title-wrap"><div class="now-title" id="now-title">Nothing playing yet</div><div class="now-artist" id="now-artist">Pick a song to begin</div></div>
+      </div>
+      <div class="expanded-transport" aria-label="Expanded playback controls">
+        <div class="expanded-buttons">
+          <button type="button" id="expanded-shuffle" aria-label="Shuffle" title="Shuffle">⤨</button>
+          <button type="button" id="expanded-previous" aria-label="Previous track">|‹</button>
+          <button type="button" id="expanded-play" aria-label="Play or pause">▶</button>
+          <button type="button" id="expanded-next" aria-label="Next track">›|</button>
+          <button type="button" id="expanded-repeat" aria-label="Repeat" title="Repeat">↻</button>
+        </div>
+        <div class="expanded-progress"><span id="expanded-current-time">0:00</span><input type="range" min="0" max="1000" value="0" id="expanded-seek" aria-label="Playback position"><span id="expanded-total-time">0:00</span></div>
+      </div>
+      <div class="panel-tabs"><button class="panel-tab active" data-panel-tab="queue">Queue <span id="queue-count">0</span></button><button class="panel-tab" data-panel-tab="lyrics">Lyrics</button><button class="panel-tab" data-panel-tab="about">Info</button></div>
+      <div class="panel-tab-content" id="panel-tab-content"><div class="empty-state compact"><span class="empty-icon">♫</span><b>Your queue is waiting</b><p>Play a song or add tracks to your queue.</p></div></div>
+      <div class="panel-panel-foot"><span class="source-badge"><span class="source-dot"></span><span id="source-label">Ready to play</span></span><button class="text-btn" id="sleep-timer-btn">◷ Sleep timer</button></div>
+    </aside>
+  </div>
+
+  <div class="bottom-player" id="bottom-player">
+    <div class="bottom-track"><div class="bottom-art" id="bottom-art"><span>♫</span></div><div class="bottom-track-meta"><b id="bottom-title">Ausic</b><small id="bottom-artist">Choose something to play</small></div><button class="mini-like" id="bottom-like" aria-label="Like current track">♡</button></div>
+    <div class="playback-center"><div class="transport-controls"><button class="transport-btn subtle" id="shuffle-btn" aria-label="Shuffle" title="Shuffle">⤨</button><button class="transport-btn" id="previous-btn" aria-label="Previous track" title="Previous">|‹</button><button class="main-play-btn" id="play-pause-btn" aria-label="Play or pause">▶</button><button class="transport-btn" id="next-btn" aria-label="Next track" title="Next">›|</button><button class="transport-btn subtle" id="repeat-btn" aria-label="Repeat" title="Repeat">↻</button></div><div class="progress-row"><span id="current-time">0:00</span><input type="range" min="0" max="1000" value="0" id="seek-slider" aria-label="Playback position"><span id="total-time">0:00</span></div></div>
+    <div class="playback-tools"><button class="transport-btn" id="open-queue-btn" title="Open queue" aria-label="Open queue">☷</button><button class="transport-btn" id="volume-btn" title="Mute/unmute" aria-label="Mute or unmute">◖))</button><input type="range" min="0" max="100" value="75" id="volume-slider" aria-label="Volume"><button class="transport-btn expand-player" id="expand-player-btn" title="Show player" aria-label="Show player">⤢</button></div>
+  </div>
+  <nav class="mobile-nav" aria-label="Mobile navigation">
+    <button class="mobile-nav-link active" data-page="home"><span>⌂</span><small>Home</small></button><button class="mobile-nav-link" data-page="search"><span>⌕</span><small>Search</small></button><button class="mobile-nav-link" data-page="explore"><span>✦</span><small>Explore</small></button><button class="mobile-nav-link" data-page="liked"><span>♡</span><small>Liked</small></button><button class="mobile-nav-link" data-page="playlists"><span>▤</span><small>Library</small></button>
+  </nav>
+  <audio id="local-audio" preload="metadata"></audio>
+  <input id="audio-file-input" type="file" accept="audio/*,.mp3,.m4a,.aac,.ogg,.opus,.wav,.flac,.aiff,.wma" multiple hidden>
+  <div class="modal-backdrop" id="modal-backdrop" hidden><section class="modal-card" id="modal-card" role="dialog" aria-modal="true" aria-labelledby="modal-title"></section></div>
+  <div class="toast-region" id="toast-region" aria-live="polite" aria-atomic="true"></div>
+  <script src="app.js" defer></script>
+</body>
+</html>

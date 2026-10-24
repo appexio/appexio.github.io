@@ -1,0 +1,18 @@
+{
+  "name": "Ausic \u2014 music, uninterrupted",
+  "short_name": "Ausic",
+  "description": "Audio-first music discovery, playlists, and local MP3 playback.",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#080a08",
+  "theme_color": "#080a08",
+  "icons": [
+    {
+      "src": "favicon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}
