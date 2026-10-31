@@ -268,7 +268,11 @@
 
                             android:
                                 data.android ||
+                                data.platform ||
                                 "",
+
+                            homepage:
+                                data.homepage || data.website || data.websiteUrl || "",
 
                             description:
                                 data.description ||
@@ -799,7 +803,7 @@
 
             icon.src =
                 app.icon ||
-                "assets/logo.png";
+                "logo.png";
 
             icon.alt =
                 app.name ||
@@ -809,7 +813,7 @@
                 function () {
 
                     this.onerror = null;
-                    this.src = "assets/logo.png";
+                    this.src = "logo.png";
 
                 };
 
@@ -899,7 +903,7 @@
 
             const shots =
                 Array.isArray(app.screenshots)
-                    ? app.screenshots.filter(Boolean).slice(0, 3)
+                    ? app.screenshots.filter(Boolean).slice(0, 8)
                     : [];
 
             shots.forEach(
@@ -948,6 +952,7 @@
 
             }
 
+            modal.scrollTop = 0;
             modal.classList.add("open");
             modal.setAttribute("aria-hidden", "false");
             document.body.classList.add("details-open");
@@ -1188,15 +1193,30 @@
         }
 
         async function fetchJson(url, timeoutMs = 9000) {
-            const controller = new AbortController();
-            const timer = setTimeout(() => controller.abort(), timeoutMs);
-            try {
-                const response = await fetch(url, { signal: controller.signal, headers: { "Accept": "application/json" } });
-                if (!response.ok) throw new Error(`HTTP ${response.status}`);
-                return await response.json();
-            } finally {
-                clearTimeout(timer);
+            const targets = [url];
+            if (CATALOG_WORKER_BASE && String(url).startsWith(CATALOG_WORKER_BASE)) {
+                const fallback = directCatalogFallback(url);
+                if (fallback && fallback !== url) targets.push(fallback);
             }
+            let lastError = null;
+            for (const target of targets) {
+                const controller = new AbortController();
+                const timer = setTimeout(() => controller.abort(), timeoutMs);
+                try {
+                    const response = await fetch(target, { signal: controller.signal, headers: { "Accept": "application/json" } });
+                    if (!response.ok) throw new Error(`HTTP ${response.status} from ${new URL(target).hostname}`);
+                    const payload = await response.json();
+                    if (payload && !Array.isArray(payload) && payload.error && Object.keys(payload).length <= 3) {
+                        throw new Error(String(payload.error));
+                    }
+                    return payload;
+                } catch (error) {
+                    lastError = error;
+                } finally {
+                    clearTimeout(timer);
+                }
+            }
+            throw lastError || new Error("Catalog request failed");
         }
 
         function fdroidSearchUrl(query) {
@@ -1216,9 +1236,8 @@
 
         // Additional public catalogs. Each provider is optional: failures are isolated
         // so a single upstream outage never prevents the other sources from working.
-        function providerUrl(provider, query) {
+        function directProviderUrl(provider, query) {
             const q = encodeURIComponent(query);
-            if (CATALOG_WORKER_BASE) return `${CATALOG_WORKER_BASE}/api/${provider}/search?q=${q}`;
             const direct = {
                 flathub: `https://flathub.org/api/v2/search?query=${q}`,
                 repology: `https://repology.org/api/v1/projects/?search=${q}`,
@@ -1235,6 +1254,30 @@
                 openvsx: `https://open-vsx.org/api/-/search?query=${q}&size=10`
             };
             return direct[provider] || "";
+        }
+
+        function providerUrl(provider, query) {
+            const q = encodeURIComponent(query);
+            if (CATALOG_WORKER_BASE) return `${CATALOG_WORKER_BASE}/api/${provider}/search?q=${q}`;
+            return directProviderUrl(provider, query);
+        }
+
+        // If the configured Worker is temporarily unavailable or returns an upstream
+        // error, retry the corresponding public catalog endpoint directly. This keeps
+        // one stale Worker deployment from making every external catalog look empty.
+        function directCatalogFallback(requestUrl) {
+            try {
+                const parsed = new URL(requestUrl);
+                const q = parsed.searchParams.get("q") || "";
+                const path = parsed.pathname;
+                if (path === "/api/fdroid/search") return `https://search.f-droid.org/api/search_apps?q=${encodeURIComponent(q)}`;
+                if (path === "/api/winget/search") return `https://api.winget.run/v2/packages?query=${encodeURIComponent(q)}&take=20`;
+                if (path === "/api/winget/featured") return "https://api.winget.run/v2/featured";
+                if (path === "/api/gitlab/search") return `https://gitlab.com/api/v4/projects?search=${encodeURIComponent(q)}&simple=true&per_page=8&order_by=star_count&sort=desc`;
+                const match = path.match(/^\/api\/([a-z0-9_-]+)\/search$/i);
+                if (match && match[1] !== "homebrew") return directProviderUrl(match[1], q);
+            } catch (_) {}
+            return "";
         }
 
         async function searchHomebrewApps(query) {
@@ -1477,11 +1520,12 @@
 
         function combinedCatalog() {
             const manualKeys = new Set(manualCatalogApps.map(appIdentityKey));
-            return [...manualCatalogApps, ...dedupeApps(automaticCatalogApps).filter(app => !manualKeys.has(appIdentityKey(app)))];
+            const external = dedupeApps(automaticCatalogApps).filter(app => !manualKeys.has(appIdentityKey(app)));
+            return [...manualCatalogApps, ...external];
         }
 
         function searchableAppText(app) {
-            return [app.name, app.developer, app.category, app.description, app.version, app.android, app.source, ...(Array.isArray(app.tags) ? app.tags : [])].join(" ").toLowerCase();
+            return [app.name, app.developer, app.category, app.description, app.version, app.android, app.source, app.packageId, app.searchText, ...(Array.isArray(app.tags) ? app.tags : [])].join(" ").toLowerCase();
         }
 
         function renderExternalSearchLoader() {
@@ -1533,6 +1577,7 @@
             window.apkCityApps = all;
             const count = document.getElementById("appCount");
             if (count) count.textContent = `${all.length}+`;
+            if (explorePageOpen) renderExplorePage();
             if (term && !filtered.length) {
                 updateCatalogStatus(`No matching items yet. Searching connected external catalogs for “${term}”…`);
             } else if (term) {
@@ -1583,7 +1628,29 @@
                 fetchJson(providerUrl("packagist", "framework")).then(data => normalizeProviderResults(data, "packagist")),
                 fetchJson(providerUrl("openvsx", "python")).then(data => normalizeProviderResults(data, "openvsx"))
             ];
-            const settled = await Promise.allSettled(tasks);
+            // Render each provider's results as soon as it responds instead of waiting
+            // for the slowest public catalog. A single slow source can no longer leave
+            // the entire marketplace looking empty during the initial load.
+            let completedSources = 0;
+            const progressiveTasks = tasks.map(task => Promise.resolve(task).then(results => {
+                completedSources++;
+                if (Array.isArray(results) && results.length) {
+                    automaticCatalogApps = dedupeApps([...automaticCatalogApps, ...results]);
+                    saveInitialCache(automaticCatalogApps);
+                    renderCombinedCatalog(document.getElementById("searchInput")?.value || "");
+                }
+                if (completedSources < tasks.length) {
+                    updateCatalogStatus(`Discovering apps across connected catalogs… ${completedSources}/${tasks.length} sources checked · ${automaticCatalogApps.length} items found.`);
+                }
+                return Array.isArray(results) ? results : [];
+            }, error => {
+                completedSources++;
+                if (completedSources < tasks.length) {
+                    updateCatalogStatus(`Discovering apps across connected catalogs… ${completedSources}/${tasks.length} sources checked · ${automaticCatalogApps.length} items found.`);
+                }
+                throw error;
+            }));
+            const settled = await Promise.allSettled(progressiveTasks);
             const apps = settled.flatMap(result => result.status === "fulfilled" ? result.value : []);
             // Preserve search results that may have arrived while the initial catalog
             // requests were still running.
@@ -1593,7 +1660,7 @@
             if (automaticCatalogApps.length) {
                 updateCatalogStatus(`${automaticCatalogApps.length} apps discovered automatically. Your admin-added apps remain included. Search to discover more from F-Droid, WinGet, GitHub Releases, GitLab, Flathub, Repology, Homebrew, Apple App Store, npm, Maven Central, crates.io, NuGet, Docker Hub, pub.dev, RubyGems, Packagist, Open VSX and Internet Archive.`);
             } else {
-                updateCatalogStatus("Automatic catalogs could not be reached directly. Search still works for your existing apps; if the browser blocks an API, deploy the included Cloudflare Worker and set it in catalog-config.js.", true);
+                updateCatalogStatus("Connected public catalogs did not return results. Your AppExio library remains available; external sources may be temporarily blocked or offline.", true);
             }
         }
 
@@ -1716,6 +1783,7 @@
             window.apkCityApps = activeCatalogView === "for-you" ? combinedCatalog() : manualCatalogApps;
             const count = document.getElementById("appCount");
             if (count) count.textContent = `${window.apkCityApps.length}+`;
+            if (explorePageOpen) renderExplorePage();
 
             const title = document.querySelector(".section-title h2");
             const subtitle = document.querySelector(".section-title p");
@@ -1774,6 +1842,103 @@
             }
         }
 
+        let explorePageOpen = false;
+        let exploreCategory = "all";
+        let exploreSearchTimer = null;
+
+        function appMatchesExploreCategory(app, category) {
+            if (category === "all") return true;
+            const details = `${app.category || ""} ${app.android || ""} ${app.source || ""} ${app.developer || ""}`.toLowerCase();
+            if (category === "android") return /android|f-droid|apk/.test(details);
+            if (category === "windows") return /windows|winget|msi|exe/.test(details);
+            if (category === "macos") return /macos|mac os|apple app store|homebrew/.test(details);
+            if (category === "games") return inferContentType(app) === "Games" || /game/.test(details);
+            if (category === "pc-software") return inferContentType(app) === "PC Software" || /windows|linux|macos|desktop|software|homebrew|flathub|winget/.test(details);
+            if (category === "apps") return inferContentType(app) === "Apps";
+            return true;
+        }
+
+        function renderExplorePage() {
+            const grid = document.getElementById("aeExploreGrid");
+            if (!grid) return;
+            const all = prepareExternalAppIcons(combinedCatalog());
+            const query = String(document.getElementById("aeExploreSearch")?.value || "").trim().toLowerCase();
+            const filtered = all.filter(app => appMatchesExploreCategory(app, exploreCategory) && (!query || searchableAppText(app).includes(query)));
+            renderApps(grid, filtered);
+            const count = document.getElementById("aeExploreCount");
+            const status = document.getElementById("aeExploreStatus");
+            if (count) count.textContent = `${filtered.length.toLocaleString()} ${filtered.length === 1 ? "item" : "items"}`;
+            if (status) {
+                const manualCount = manualCatalogApps.length;
+                const externalCount = dedupeApps(automaticCatalogApps).filter(app => !new Set(manualCatalogApps.map(appIdentityKey)).has(appIdentityKey(app))).length;
+                status.textContent = query
+                    ? `Search results across ${all.length.toLocaleString()} AppExio and public catalog listings.`
+                    : `${manualCount.toLocaleString()} AppExio library items · ${externalCount.toLocaleString()} public catalog listings`;
+            }
+            document.querySelectorAll("[data-explore-category]").forEach(button => {
+                const active = button.dataset.exploreCategory === exploreCategory;
+                button.classList.toggle("active", active);
+                button.setAttribute("aria-pressed", String(active));
+            });
+        }
+
+        function openExplorePage() {
+            const page = document.getElementById("appexioExplorePage");
+            if (!page) return;
+            explorePageOpen = true;
+            exploreCategory = "all";
+            page.classList.add("open");
+            page.setAttribute("aria-hidden", "false");
+            document.body.classList.add("explore-page-open");
+            const search = document.getElementById("aeExploreSearch");
+            if (search) search.value = "";
+            renderExplorePage();
+            window.setTimeout(() => search?.focus(), 80);
+        }
+
+        function closeExplorePage() {
+            const page = document.getElementById("appexioExplorePage");
+            if (!page) return;
+            explorePageOpen = false;
+            page.classList.remove("open");
+            page.setAttribute("aria-hidden", "true");
+            document.body.classList.remove("explore-page-open");
+            clearTimeout(exploreSearchTimer);
+        }
+
+        function setupExplorePage() {
+            const search = document.getElementById("aeExploreSearch");
+            const close = document.getElementById("aeExploreClose");
+            const page = document.getElementById("appexioExplorePage");
+            if (!page || page.dataset.bound === "true") return;
+            page.dataset.bound = "true";
+            close?.addEventListener("click", closeExplorePage);
+            search?.addEventListener("input", () => {
+                renderExplorePage();
+                clearTimeout(exploreSearchTimer);
+                const term = String(search.value || "").trim();
+                if (term.length < 2) return;
+                exploreSearchTimer = setTimeout(() => {
+                    const searchId = ++latestAutomaticSearchId;
+                    searchAutomaticSources(term, searchId).then(() => {
+                        if (explorePageOpen) renderExplorePage();
+                    }).catch(error => console.warn("AppExio Explore search failed:", error));
+                }, 420);
+            });
+            page.querySelectorAll("[data-explore-category]").forEach(button => {
+                button.addEventListener("click", () => {
+                    exploreCategory = button.dataset.exploreCategory || "all";
+                    renderExplorePage();
+                });
+            });
+            page.addEventListener("click", event => {
+                if (event.target === page) closeExplorePage();
+            });
+            document.addEventListener("keydown", event => {
+                if (event.key === "Escape" && explorePageOpen) closeExplorePage();
+            });
+        }
+
         function setupCatalogNavigation() {
             const links = document.querySelectorAll(".sidebar-link, .category");
             links.forEach(el => {
@@ -1801,15 +1966,15 @@
                 });
             });
 
-            document.querySelectorAll('a[href="#games"].view-all, .footer-column a[href="#games"]').forEach(el => {
+            document.querySelectorAll('a.view-all, .footer-column a[href="#games"]').forEach(el => {
                 if (el.dataset.catalogBound === "true") return;
                 el.dataset.catalogBound = "true";
                 el.addEventListener("click", event => {
                     event.preventDefault();
-                    setCatalogView("for-you");
-                    document.getElementById("games")?.scrollIntoView({ behavior: "smooth", block: "start" });
+                    openExplorePage();
                 });
             });
+            setupExplorePage();
             setCatalogView(activeCatalogView);
         }
 
@@ -2756,36 +2921,77 @@ main{max-width:none;margin:0 0 0 232px;padding:0 36px}.store-head{padding:32px 0
 <main>
 <section class="store-head"><div class="store-title-row"><div><div class="eyebrow">APPEXIO • DIGITAL MARKETPLACE</div><h1 class="store-title">Find something <span>worth downloading.</span></h1><p class="store-sub">Apps, games and PC software — organized in one place.</p></div></div></section>
 <div class="category-strip"><span class="category">Pc Apps</span><span class="category">Games</span><span class="category">Android Apps</span><span class="category">PC software</span></div>
-<section class="section" id="games"><div class="section-header"><div class="section-title"><h2>Latest apps & games</h2><p>Freshly added to the AppExio library</p></div><a href="#games" class="view-all">Explore all <i class="fa-solid fa-arrow-right"></i></a></div><div id="autoCatalogStatus" class="auto-catalog-status" role="status" aria-live="polite">Loading apps added by AppExio…</div><div class="catalog-note">For You includes your AppExio library and results from connected public app and software catalogs.</div><div class="apps-grid" id="gamesGrid"><div class="loading-state"><i class="fa-solid fa-spinner fa-spin"></i><span>Loading apps & games...</span></div></div></section>
+<section class="section" id="games"><div class="section-header"><div class="section-title"><h2>Latest apps & games</h2><p>Freshly added to the AppExio library</p></div><a href="#explore" class="view-all">Explore all <i class="fa-solid fa-arrow-right"></i></a></div><div id="autoCatalogStatus" class="auto-catalog-status" role="status" aria-live="polite">Loading apps added by AppExio…</div><div class="catalog-note">For You includes your AppExio library and results from connected public app and software catalogs.</div><div class="apps-grid" id="gamesGrid"><div class="loading-state"><i class="fa-solid fa-spinner fa-spin"></i><span>Loading apps & games...</span></div></div></section>
 <section class="feature-row"><div class="feature-main"><div class="feature-label">EDITOR'S DISCOVERY</div><h2>One marketplace.<br>More to explore.</h2><p>Discover Android apps, PC software and games without searching across dozens of websites.</p><a href="#games">Browse library <i class="fa-solid fa-arrow-right"></i></a></div></section>
 <section class="section"><div class="section-header"><div class="section-title"><h2>Built for discovery</h2><p>A cleaner way to browse your software library</p></div></div><div class="info-row"><div class="info-card"><i class="fa-solid fa-layer-group"></i><h3>Everything together</h3><p>Android apps, games and PC software organized in one modern marketplace.</p></div><div class="info-card"><i class="fa-solid fa-bolt"></i><h3>Fresh additions</h3><p>New releases appear directly in the library so the latest content is easy to find.</p></div><div class="info-card"><i class="fa-solid fa-magnifying-glass"></i><h3>Fast discovery</h3><p>Search through applications and software without unnecessary pages or clutter.</p></div></div></section>
 </main>
 
-<!-- APP DETAILS MODAL -->
+<!-- APPEXIO EXPLORE ALL: full-library page -->
+<section id="appexioExplorePage" class="ae-explore-page" aria-hidden="true" aria-label="Explore all AppExio apps">
+  <div class="ae-explore-bar">
+    <a class="ae-explore-brand" href="index.html" aria-label="AppExio home"><img src="favicon.png" alt=""><span>APP<span>EXIO</span></span></a>
+    <div class="ae-explore-heading"><div class="ae-eyebrow">THE APPEXIO CATALOG</div><h1>Explore the whole library</h1><p>Discover apps, games, desktop software and open-source tools from AppExio and connected catalogs.</p></div>
+    <button type="button" id="aeExploreClose" class="ae-explore-close"><i class="fa-solid fa-arrow-left"></i><span>Back to store</span></button>
+  </div>
+  <div class="ae-explore-controls">
+    <label class="ae-explore-searchbox"><i class="fa-solid fa-magnifying-glass"></i><input id="aeExploreSearch" type="search" autocomplete="off" placeholder="Search the entire library…" aria-label="Search the entire AppExio library"></label>
+    <div class="ae-explore-count" id="aeExploreCount">Loading library…</div>
+  </div>
+  <nav class="ae-explore-filters" aria-label="Filter library">
+    <button type="button" data-explore-category="all" class="active" aria-pressed="true">All items</button>
+    <button type="button" data-explore-category="apps" aria-pressed="false">Apps</button>
+    <button type="button" data-explore-category="games" aria-pressed="false">Games</button>
+    <button type="button" data-explore-category="pc-software" aria-pressed="false">PC software</button>
+    <button type="button" data-explore-category="android" aria-pressed="false">Android</button>
+    <button type="button" data-explore-category="windows" aria-pressed="false">Windows</button>
+    <button type="button" data-explore-category="macos" aria-pressed="false">macOS</button>
+  </nav>
+  <div id="aeExploreStatus" class="ae-explore-status" aria-live="polite">Loading your AppExio library and connected public catalogs…</div>
+  <div id="aeExploreGrid" class="ae-explore-grid"></div>
+</section>
+
+<!-- FULL-PAGE APP / SOFTWARE PRODUCT DETAILS -->
 <div class="app-details-modal" id="appDetailsModal" aria-hidden="true">
-<div class="app-details-dialog" role="dialog" aria-modal="true" aria-labelledby="detailsName">
-<button type="button" class="details-close" id="detailsClose" aria-label="Close app details"><i class="fa-solid fa-xmark"></i></button>
-<div class="details-hero">
-<div class="details-media"><img id="detailsIcon" class="details-icon" alt="App"><a id="detailsDownload" class="details-download" target="_blank" rel="noopener noreferrer"><i class="fa-solid fa-download"></i> Download</a></div>
-<div class="details-title">
-<h2 id="detailsName">App Name</h2>
-<div id="detailsDeveloper" class="details-developer">Developer</div>
-<div class="details-badges">
-<span id="detailsCategory" class="details-badge">Apps</span>
-<span id="detailsRating" class="details-badge rating"></span>
-<span id="detailsDownloads" class="details-badge"></span>
-</div></div></div>
-<div class="details-body">
-<div class="details-grid">
-<div class="details-stat"><strong id="detailsVersion">—</strong><span>Version</span></div>
-<div class="details-stat"><strong id="detailsSize">—</strong><span>Size</span></div>
-<div class="details-stat"><strong id="detailsPlatform">—</strong><span>PC / Android</span></div>
+  <div class="ae-product-page" role="dialog" aria-modal="true" aria-labelledby="detailsName">
+    <header class="ae-product-topbar">
+      <button type="button" class="details-close" id="detailsClose" aria-label="Back to AppExio"><i class="fa-solid fa-arrow-left"></i><span>Back to store</span></button>
+      <a class="ae-product-brand" href="index.html"><img src="favicon.png" alt="">AppExio</a>
+      <span class="ae-product-toplabel">APP & SOFTWARE DETAILS</span>
+    </header>
+    <main class="ae-product-main">
+      <section class="ae-product-hero">
+        <div class="ae-product-orb ae-product-orb-one"></div><div class="ae-product-orb ae-product-orb-two"></div>
+        <div class="ae-product-identity">
+          <img id="detailsIcon" class="details-icon" alt="App icon">
+          <div class="details-title">
+            <div class="ae-product-kicker">APPEXIO STORE LISTING</div>
+            <h1 id="detailsName">App name</h1>
+            <div id="detailsDeveloper" class="details-developer">Developer</div>
+            <div class="details-badges"><span id="detailsCategory" class="details-badge">Apps</span><span id="detailsRating" class="details-badge rating"></span><span id="detailsDownloads" class="details-badge"></span></div>
+          </div>
+        </div>
+        <div class="ae-product-hero-action"><a id="detailsDownload" class="details-download" target="_blank" rel="noopener noreferrer"><i class="fa-solid fa-download"></i> Download</a><span class="ae-safe-note"><i class="fa-solid fa-shield-halved"></i> Check publisher and compatibility before installing</span></div>
+      </section>
+      <div class="ae-product-content">
+        <section class="ae-product-overview">
+          <div class="ae-product-stats">
+            <div class="details-stat"><strong id="detailsVersion">—</strong><span>Version</span></div>
+            <div class="details-stat"><strong id="detailsSize">—</strong><span>Download size</span></div>
+            <div class="details-stat"><strong id="detailsPlatform">—</strong><span>Available on</span></div>
+          </div>
+          <section class="details-section" id="detailsDescriptionSection"><div class="ae-section-heading"><span>01</span><h2>About this app</h2></div><p id="detailsDescription"></p></section>
+          <section class="details-section" id="detailsWhatsNewSection"><div class="ae-section-heading"><span>02</span><h2>What's new</h2></div><p id="detailsWhatsNew"></p></section>
+          <section class="details-section ae-tags-section"><div class="ae-section-heading"><span>03</span><h2>Discover more</h2></div><div id="detailsTags" class="details-tags"></div></section>
+        </section>
+        <aside class="ae-product-aside">
+          <div class="ae-aside-card"><div class="ae-aside-icon"><i class="fa-solid fa-circle-check"></i></div><h3>Before you install</h3><p>Review the publisher, platform and download source. External catalog listings take you to their official publisher or package page.</p><div class="ae-aside-line"><i class="fa-solid fa-globe"></i><span>Publisher / source details</span></div><div class="ae-aside-line"><i class="fa-solid fa-laptop-mobile"></i><span>Platform compatibility</span></div></div>
+        </aside>
+        <section class="details-section ae-screenshots-section" id="detailsScreenshotsSection"><div class="ae-section-heading"><span>04</span><h2>Screenshots & previews</h2></div><div id="detailsScreenshots" class="details-screenshots"></div></section>
+      </div>
+    </main>
+    <footer class="ae-product-footer"><span>AppExio · Discover more of what you can do.</span><span>Publisher details and download availability may change.</span></footer>
+  </div>
 </div>
-<section class="details-section" id="detailsDescriptionSection"><h3>Description</h3><p id="detailsDescription"></p></section>
-<section class="details-section" id="detailsWhatsNewSection"><h3>What's New</h3><p id="detailsWhatsNew"></p></section>
-<section class="details-section"><h3>Tags</h3><div id="detailsTags" class="details-tags"></div></section>
-<section class="details-section" id="detailsScreenshotsSection"><h3>Pictures</h3><div id="detailsScreenshots" class="details-screenshots"></div></section>
-</div></div></div>
 
 <footer><div class="footer-inner"><div class="footer-grid"><div class="footer-brand"><a href="#" class="logo"><div class="logo-icon"><img src="logo.png" alt="AppExio"></div>APP<span>EXIO</span></a><p>AppExio is a modern marketplace for discovering Android apps, PC software, games and useful tools.</p></div><div class="footer-column"><h4>EXPLORE</h4><a href="#games">Latest releases</a><a href="#games">Apps & games</a></div><div class="footer-column"><h4>APPEXIO</h4><a href="about-us.html">About us</a><a href="privacy-policy.html">Privacy policy</a><a href="terms.html">Terms</a></div><div class="footer-column"><h4>FOLLOW</h4><a href="https://x.com/appexiodev">X / Twitter</a><a href="https://www.instagram.com/appexiodev">Instagram</a></div></div><div class="copyright"><span>© 2026 AppExio. All rights reserved.</span><span>Android • PC • Games</span></div></div></footer>
 
@@ -2794,18 +3000,20 @@ main{max-width:none;margin:0 0 0 232px;padding:0 36px}.store-head{padding:32px 0
     const detailsModal = document.getElementById("appDetailsModal");
     const detailsClose = document.getElementById("detailsClose");
     if (!detailsModal || !detailsClose) return;
-    detailsClose.addEventListener("click", function (event) {
-        event.preventDefault();
-        event.stopImmediatePropagation();
+    function closeDetailsPage() {
         detailsModal.classList.remove("open");
         detailsModal.setAttribute("aria-hidden", "true");
         document.body.classList.remove("details-open");
+    }
+    detailsClose.addEventListener("click", function (event) {
+        event.preventDefault();
+        closeDetailsPage();
     });
     detailsModal.addEventListener("click", function (event) {
-        if (event.target === detailsModal) closeAppDetails();
+        if (event.target === detailsModal) closeDetailsPage();
     });
     document.addEventListener("keydown", function (event) {
-        if (event.key === "Escape" && detailsModal.classList.contains("open")) closeAppDetails();
+        if (event.key === "Escape" && detailsModal.classList.contains("open")) closeDetailsPage();
     });
 })();
 </script>
@@ -2847,4 +3055,31 @@ main{max-width:none;margin:0 0 0 232px;padding:0 36px}.store-head{padding:32px 0
 <footer class="developer-credit"><p>Designed & Developed by <strong><a href="https://appexiodev.github.io">
       AppexioDevs
     </a>
-</strong></p></footer></body></html>
+</strong></p></footer>
+<style id="appexio-full-store-experience">
+/* Full-page product details and complete catalog browser. No theme switcher is used. */
+:root{--ae-accent:#167a48;--ae-accent-soft:#e8f4ed;--ae-ink:#18231d;--ae-muted:#66736b;--ae-border:#e2e9e4}
+.app-details-modal{position:fixed;inset:0;z-index:5000;display:none;align-items:stretch;justify-content:stretch;padding:0;background:#f6f8f6;backdrop-filter:none;overflow-y:auto}
+.app-details-modal.open{display:block}
+.ae-product-page{min-height:100dvh;width:100%;background:#f7f9f7;color:var(--ae-ink);overflow:hidden}
+.ae-product-topbar{height:72px;display:flex;align-items:center;justify-content:space-between;gap:18px;padding:0 clamp(18px,4vw,64px);background:rgba(255,255,255,.94);border-bottom:1px solid var(--ae-border);position:sticky;top:0;z-index:5;backdrop-filter:blur(14px)}
+.ae-product-topbar .details-close{position:static;display:inline-flex;align-items:center;gap:10px;width:auto;height:40px;padding:0 14px;border:1px solid var(--ae-border);border-radius:12px;background:#fff;color:#34443a;font:600 12px Inter,Arial,sans-serif;cursor:pointer}
+.ae-product-topbar .details-close:hover{background:var(--ae-accent-soft);color:var(--ae-accent)}
+.ae-product-brand{display:flex;align-items:center;gap:9px;font-size:17px;font-weight:800;color:#24342a}.ae-product-brand img{width:30px;height:30px;border-radius:9px}.ae-product-toplabel{font-size:10px;font-weight:800;letter-spacing:1.4px;color:#849188}
+.ae-product-main{max-width:1440px;margin:auto;padding:0 clamp(18px,4vw,64px) 56px}
+.ae-product-hero{position:relative;isolation:isolate;display:grid;grid-template-columns:minmax(0,1fr) minmax(220px,300px);align-items:center;gap:30px;margin:28px 0 0;padding:clamp(28px,5vw,58px);border:1px solid #dce9df;border-radius:28px;background:linear-gradient(116deg,#eef7f0 0%,#f7faf8 55%,#e7f2eb 100%);overflow:hidden}
+.ae-product-orb{position:absolute;z-index:-1;border-radius:50%;pointer-events:none}.ae-product-orb-one{width:420px;height:420px;right:14%;top:-290px;background:#cde8d4;filter:blur(2px)}.ae-product-orb-two{width:260px;height:260px;right:-90px;bottom:-180px;background:#d7e8fa;filter:blur(5px)}
+.ae-product-identity{display:flex;align-items:center;gap:clamp(18px,3vw,34px);min-width:0}.ae-product-identity .details-icon{width:clamp(92px,11vw,142px);height:clamp(92px,11vw,142px);flex:none;object-fit:cover;border-radius:28px;background:#fff;box-shadow:0 15px 34px #24432d20;border:1px solid #ffffffb8}
+.details-title{min-width:0}.ae-product-kicker{font-size:10px;letter-spacing:1.6px;font-weight:800;color:var(--ae-accent);margin-bottom:10px}.details-title h1{margin:0 0 8px;font-size:clamp(27px,4vw,48px);line-height:1.08;letter-spacing:-1.6px;color:#17261c;overflow-wrap:anywhere}.details-developer{font-size:14px;color:#607066;margin-bottom:17px}.details-badges{display:flex;flex-wrap:wrap;gap:8px}.details-badge{border:1px solid #d8e5dc;background:#ffffffc9;color:#47564c;border-radius:8px;padding:8px 11px;font-size:11px;font-weight:650}.details-badge.rating{color:#946a12}.details-badge.rating i{color:#d99d22}
+.ae-product-hero-action{display:flex;flex-direction:column;align-items:stretch;gap:12px;position:relative;z-index:1}.ae-product-hero-action .details-download{position:static;inset:auto;left:auto;right:auto;top:auto;bottom:auto;display:inline-flex;justify-content:center;align-items:center;gap:10px;min-height:52px;padding:0 24px;border:0;border-radius:13px;background:linear-gradient(135deg,#16834c,#27975e);color:#fff;text-decoration:none;font-size:14px;font-weight:750;box-shadow:0 10px 24px #167a4830;transition:transform .2s,box-shadow .2s}.details-download:hover{transform:translateY(-2px);box-shadow:0 14px 28px #167a4840}.ae-safe-note{font-size:10px;line-height:1.5;color:#67766b;text-align:center}.ae-safe-note i{color:var(--ae-accent);margin-right:4px}
+.ae-product-content{display:grid;grid-template-columns:minmax(0,1fr) 300px;gap:34px 44px;padding:34px 4px 0}.ae-product-overview{min-width:0}.ae-product-stats{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;margin-bottom:36px}.ae-product-stats .details-stat{display:flex;flex-direction:column;gap:7px;min-width:0;padding:18px 20px;border:1px solid var(--ae-border);border-radius:16px;background:#fff}.details-stat strong{font-size:14px;color:#23372a;overflow-wrap:anywhere}.details-stat span{font-size:10px;letter-spacing:.4px;text-transform:uppercase;color:#859087}.details-section{margin:0 0 32px;padding:0;border:0}.ae-section-heading{display:flex;align-items:center;gap:12px;margin-bottom:13px}.ae-section-heading>span{display:grid;place-items:center;width:28px;height:28px;border-radius:9px;background:#e6f2e9;color:var(--ae-accent);font-size:10px;font-weight:800}.ae-section-heading h2{margin:0;font-size:20px;letter-spacing:-.45px;color:#203126}.details-section p{max-width:900px;margin:0;color:#5f6e64;font-size:13px;line-height:1.9;white-space:pre-line}.details-tags{display:flex;flex-wrap:wrap;gap:8px}.details-tags span{padding:8px 12px;border-radius:9px;background:#e9f4ec;color:#246740;font-size:11px;font-weight:650}
+.ae-product-aside{grid-column:2;grid-row:1}.ae-aside-card{position:sticky;top:96px;padding:23px;border:1px solid var(--ae-border);border-radius:18px;background:#fff;box-shadow:0 8px 28px #263e2c08}.ae-aside-icon{display:grid;place-items:center;width:42px;height:42px;border-radius:13px;background:#e7f4eb;color:var(--ae-accent);font-size:18px;margin-bottom:16px}.ae-aside-card h3{margin:0 0 9px;color:#24362a;font-size:16px}.ae-aside-card>p{margin:0 0 20px;color:#68766d;font-size:11px;line-height:1.7}.ae-aside-line{display:flex;align-items:center;gap:10px;padding:12px 0;border-top:1px solid #edf1ed;color:#526258;font-size:11px}.ae-aside-line i{width:18px;color:var(--ae-accent)}
+.ae-screenshots-section{grid-column:1/-1;margin-top:2px}.details-screenshots{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:16px}.details-screenshots img{width:100%;height:clamp(180px,28vw,330px);object-fit:cover;border-radius:16px;border:1px solid #dfe7e1;background:#edf1ee;box-shadow:0 8px 22px #1b30200d}.ae-product-footer{display:flex;justify-content:space-between;gap:18px;padding:23px clamp(18px,4vw,64px);border-top:1px solid var(--ae-border);background:#fff;color:#819087;font-size:10px}
+.ae-explore-page{position:fixed;inset:0;z-index:4500;display:none;overflow-y:auto;background:#f7f9f7;color:#1e2c22;padding:0 clamp(16px,4vw,58px) 52px}.ae-explore-page.open{display:block}.ae-explore-bar{max-width:1500px;margin:auto;display:grid;grid-template-columns:150px minmax(0,1fr) auto;align-items:center;gap:26px;padding:24px 0 22px;border-bottom:1px solid #e1e9e3}.ae-explore-brand{display:flex;align-items:center;gap:9px;font-size:16px;font-weight:850;color:#26372b}.ae-explore-brand img{width:34px;height:34px;border-radius:10px}.ae-explore-brand span span{color:#16834c}.ae-explore-heading .ae-eyebrow{font-size:9px;font-weight:850;letter-spacing:1.6px;color:#16834c;margin-bottom:6px}.ae-explore-heading h1{font-size:clamp(24px,3vw,34px);letter-spacing:-1px;color:#1e2d23}.ae-explore-heading p{font-size:12px;color:#6e7c72;margin-top:7px;line-height:1.55}.ae-explore-close{display:inline-flex;align-items:center;gap:9px;min-height:42px;padding:0 15px;border:1px solid #dce6de;border-radius:12px;background:#fff;color:#34463a;font:650 12px Inter,Arial,sans-serif;cursor:pointer}.ae-explore-close:hover{background:#e8f4ed;color:#167a48}.ae-explore-controls{max-width:1500px;margin:25px auto 14px;display:flex;align-items:center;justify-content:space-between;gap:18px}.ae-explore-searchbox{display:flex;align-items:center;gap:12px;width:min(620px,100%);height:52px;padding:0 18px;border:1px solid #dfe8e1;border-radius:14px;background:#fff;box-shadow:0 4px 16px #233b2a08}.ae-explore-searchbox i{color:#849188}.ae-explore-searchbox input{width:100%;border:0;outline:0;background:transparent;color:#24362a;font:13px Inter,Arial,sans-serif}.ae-explore-searchbox input::placeholder{color:#96a198}.ae-explore-count{font-size:12px;font-weight:750;color:#4c6152;white-space:nowrap}.ae-explore-filters{max-width:1500px;margin:0 auto 13px;display:flex;gap:8px;overflow-x:auto;padding:3px 0 10px;scrollbar-width:thin}.ae-explore-filters button{flex:none;padding:9px 15px;border:1px solid #dfe7e1;border-radius:999px;background:#fff;color:#5c6b60;font:650 11px Inter,Arial,sans-serif;cursor:pointer;transition:.18s}.ae-explore-filters button:hover,.ae-explore-filters button.active{border-color:#b8d9c2;background:#e8f4ed;color:#167a48}.ae-explore-status{max-width:1500px;margin:0 auto 15px;color:#829087;font-size:11px}.ae-explore-grid{max-width:1500px;margin:auto;display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:13px}.ae-explore-grid .app-card{min-height:116px;display:grid;grid-template-columns:68px minmax(0,1fr);grid-template-rows:auto auto auto;align-content:center;column-gap:14px;row-gap:5px;padding:15px 16px;background:#fff;border:1px solid #e4ebe5;border-radius:15px;box-shadow:0 2px 8px #21382906;transition:transform .18s,border-color .18s,box-shadow .18s}.ae-explore-grid .app-card:hover{transform:translateY(-2px);border-color:#b7d9c0;box-shadow:0 9px 24px #21382910}.ae-explore-grid .app-icon{grid-column:1;grid-row:1/5;width:68px;height:68px;align-self:center;margin:0;border-radius:16px}.ae-explore-grid .app-name{grid-column:2;grid-row:1;color:#203126;font-size:13px;white-space:normal;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}.ae-explore-grid .app-developer{grid-column:2;grid-row:2;color:#718076;font-size:10px;margin:0}.ae-explore-grid .app-meta{grid-column:2;grid-row:3;color:#758278;margin:3px 0 0;font-size:10px}.ae-explore-grid .app-source-badge{grid-column:2;grid-row:4;justify-self:start;margin-top:2px;color:#167a48;background:#edf7ef;border-color:#d4e8d9}.ae-explore-grid .verified{top:8px;right:8px}.ae-explore-grid .empty-state{grid-column:1/-1;min-height:240px;border:1px dashed #d7e2d9;border-radius:18px;background:#fff}.ae-explore-grid .empty-state h3{color:#34483a}
+body.details-open,body.explore-page-open{overflow:hidden}.details-close span{display:inline}
+@media(max-width:1050px){.ae-explore-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.ae-product-content{grid-template-columns:minmax(0,1fr) 260px;gap:28px}.ae-product-hero{grid-template-columns:minmax(0,1fr) 240px}}
+@media(max-width:760px){.ae-product-topbar{height:62px;padding:0 15px}.ae-product-toplabel{display:none}.ae-product-main{padding:0 14px 36px}.ae-product-hero{grid-template-columns:1fr;gap:22px;margin-top:14px;padding:23px 18px;border-radius:20px}.ae-product-identity{align-items:flex-start;gap:15px}.ae-product-identity .details-icon{width:76px;height:76px;border-radius:18px}.ae-product-kicker{font-size:8px;margin-bottom:7px}.details-title h1{font-size:25px;letter-spacing:-.8px}.details-developer{font-size:11px;margin-bottom:10px}.details-badges{gap:5px}.details-badge{padding:6px 8px;font-size:9px}.details-download{width:100%;min-height:48px}.ae-product-content{display:flex;flex-direction:column;gap:22px;padding:23px 2px 0}.ae-product-stats{gap:7px;margin-bottom:27px}.ae-product-stats .details-stat{padding:12px 9px;border-radius:12px}.details-stat strong{font-size:11px}.details-stat span{font-size:8px}.ae-section-heading h2{font-size:17px}.details-section p{font-size:12px}.ae-product-aside{order:3}.ae-aside-card{position:static;padding:17px}.ae-screenshots-section{order:4}.details-screenshots{grid-template-columns:1fr 1fr;gap:8px}.details-screenshots img{height:auto;aspect-ratio:4/5;border-radius:12px}.ae-product-footer{flex-direction:column;padding:18px 16px;gap:8px}.ae-explore-page{padding:0 14px 35px}.ae-explore-bar{grid-template-columns:1fr auto;gap:12px;padding:16px 0}.ae-explore-brand{grid-column:1;grid-row:1}.ae-explore-heading{grid-column:1/-1;grid-row:2}.ae-explore-heading h1{font-size:25px}.ae-explore-heading p{font-size:11px}.ae-explore-close{grid-column:2;grid-row:1;padding:0 11px}.ae-explore-close span{display:none}.ae-explore-controls{margin:17px auto 12px;align-items:flex-start;flex-direction:column;gap:10px}.ae-explore-searchbox{width:100%;height:48px}.ae-explore-count{font-size:11px}.ae-explore-filters{margin-bottom:9px}.ae-explore-grid{grid-template-columns:1fr;gap:9px}.ae-explore-grid .app-card{min-height:100px;grid-template-columns:60px minmax(0,1fr);column-gap:12px;padding:12px}.ae-explore-grid .app-icon{width:60px;height:60px;border-radius:14px}.ae-explore-grid .app-name{font-size:12px}.ae-explore-grid .app-developer{font-size:10px}.ae-explore-grid .app-meta{font-size:9px}}
+@media(min-width:761px) and (max-width:1050px){.ae-product-content{grid-template-columns:1fr}.ae-product-aside{grid-column:1;grid-row:auto}.ae-aside-card{position:static}.ae-screenshots-section{grid-column:1}}
+</style>
+
+</body></html>
