@@ -1,75 +1,267 @@
-<!DOCTYPE html><html lang="en"><head>
-<meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Terms &amp; Conditions - AppExio</title><meta name="description" content="Read the Terms and Conditions governing your use of AppExio.">
-<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin><link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="theme-color" content="#0b0b0d">
+    <title>Terms &amp; Conditions | AppExio</title>
+    <meta name="description" content="Read the Terms and Conditions governing your use of AppExio.">
+    <link rel="icon" type="image/png" href="favicon.png">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
 <style>
-*{margin:0;padding:0;box-sizing:border-box}html{scroll-behavior:smooth}body{font-family:Inter,sans-serif;background:#f6f8fc;color:#263248;line-height:1.75}a{color:inherit;text-decoration:none}.navbar{width:100%;padding:16px 7%;display:flex;align-items:center;justify-content:space-between;background:rgba(255,255,255,.94);border-bottom:1px solid rgba(35,48,75,.12);position:sticky;top:0;z-index:1000;backdrop-filter:blur(15px)}.navbar-logo{display:inline-flex;align-items:center}.navbar-logo img{width:42px;height:42px;object-fit:contain}.nav-links{display:flex;gap:30px}.nav-links a{color:#59657a;font-size:14px;font-weight:600}.nav-links a:hover{color:#6552d9}.menu-btn{display:none;font-size:25px;cursor:pointer;color:#172033}.hero{text-align:center;padding:64px 20px 54px;position:relative;overflow:hidden;background:radial-gradient(ellipse at 50% 0%,rgba(139,108,255,.09),transparent 65%)}.hero h1{font-size:clamp(38px,7vw,68px);font-weight:900;letter-spacing:-2.5px;line-height:1.1;color:#172033}.hero h1 span{background:linear-gradient(100deg,#6552d9,#1687d9);-webkit-background-clip:text;background-clip:text;color:transparent}.hero p{max-width:700px;margin:18px auto 0;color:#5d687c;font-size:15px}.updated{display:inline-block;margin-top:20px;padding:8px 15px;border-radius:50px;background:rgba(101,82,217,.07);border:1px solid rgba(101,82,217,.18);color:#5746c4;font-size:12px;font-weight:600}.container{width:86%;max-width:1050px;margin:auto}.terms-box{background:#fff;border:1px solid rgba(35,48,75,.12);border-radius:22px;padding:45px;margin-bottom:70px;box-shadow:0 8px 26px rgba(31,45,75,.06)}.terms-section{padding:5px 0 35px;margin-bottom:35px;border-bottom:1px solid rgba(35,48,75,.12)}.terms-section:last-child{border:0;margin:0;padding-bottom:0}.terms-section h2{font-size:23px;font-weight:800;margin-bottom:15px;color:#172033}.terms-section h3{font-size:17px;font-weight:700;margin:22px 0 8px;color:#29364d}.terms-section p{color:#4c586d;font-size:14px;margin-bottom:13px}.terms-section ul{margin:12px 0 15px 20px;color:#4c586d}.terms-section li{margin-bottom:8px;font-size:14px}.highlight,.warning{padding:18px 20px;border-radius:8px;margin:20px 0}.highlight{background:rgba(101,82,217,.07);border-left:3px solid #6552d9}.warning{background:rgba(217,153,34,.09);border-left:3px solid #d99b22}.highlight p,.warning p{margin:0}.email{color:#5746c4;font-weight:700}footer{border-top:1px solid rgba(35,48,75,.12);padding:42px 7%;text-align:center;color:#657087;font-size:13px}footer strong{color:#172033}@media(max-width:800px){.nav-links{display:none;position:absolute;top:70px;left:0;width:100%;padding:24px;flex-direction:column;gap:20px;background:#fff;border-bottom:1px solid rgba(35,48,75,.12)}.nav-links.show{display:flex}.menu-btn{display:block}.terms-box{padding:28px 22px}.hero{padding-top:65px}}@media(max-width:450px){.container{width:92%}.hero h1{letter-spacing:-1.5px}.terms-section h2{font-size:21px}}
-</style><style id="appexio-icon-only-branding">
-.navbar-logo{display:inline-flex!important;align-items:center!important;justify-content:center!important;gap:0!important;min-width:0!important}
-.navbar-logo:before,.navbar-logo:after{content:none!important;display:none!important}
-.navbar-logo img{width:40px!important;height:40px!important;max-width:40px!important;object-fit:contain!important;display:block!important}
+:root {
+    color-scheme: dark;
+    --bg: #0b0b0d;
+    --surface: #19191d;
+    --surface-deep: #121215;
+    --line: rgba(255,255,255,.11);
+    --text: #f4f4f5;
+    --muted: #a5a5ad;
+    --muted-2: #85858e;
+    --accent: #ee4654;
+    --accent-deep: #b83248;
+    --accent-soft: rgba(238,70,84,.10);
+    --content-width: 1080px;
+}
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+html { min-width: 320px; scroll-behavior: smooth; background: var(--bg); color-scheme: dark; }
+body {
+    min-width: 320px;
+    width: 100%;
+    overflow-x: hidden;
+    font-family: Inter, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    line-height: 1.75;
+    color: var(--text);
+    background: radial-gradient(ellipse at 50% -18%, rgba(238,70,84,.12), transparent 44%), var(--bg);
+    -webkit-font-smoothing: antialiased;
+    text-rendering: optimizeLegibility;
+}
+a { color: inherit; text-decoration: none; transition: color .2s ease, background .2s ease, border-color .2s ease, transform .2s ease; }
+
+/* Compact AppExio glass navigation */
+.navbar {
+    position: sticky;
+    top: 0;
+    z-index: 1000;
+    min-height: 66px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+    padding: 10px clamp(18px, 6vw, 82px);
+    background: rgba(12,12,14,.94);
+    border-bottom: 1px solid rgba(255,255,255,.10);
+    box-shadow: 0 8px 28px rgba(0,0,0,.22);
+    backdrop-filter: blur(22px);
+    -webkit-backdrop-filter: blur(22px);
+}
+.navbar-logo { display: inline-flex; align-items: center; justify-content: center; flex: 0 0 auto; }
+.navbar-logo img { display: block; width: 36px; height: 36px; object-fit: contain; }
+.back-home {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    min-height: 38px;
+    padding: 8px 15px;
+    border: 1px solid rgba(255,255,255,.13);
+    border-radius: 999px;
+    background: rgba(255,255,255,.045);
+    color: #e4e4e7;
+    font-size: 12.5px;
+    font-weight: 650;
+    line-height: 1;
+    white-space: nowrap;
+    transition: background .2s ease, border-color .2s ease, color .2s ease, transform .2s ease;
+}
+.back-home-arrow { display: inline-block; font-size: 18px; line-height: .8; transition: transform .2s ease; }
+.back-home:hover {
+    color: #ff929a;
+    background: rgba(238,70,84,.11);
+    border-color: rgba(238,70,84,.42);
+    transform: translateX(-2px);
+}
+.back-home:hover .back-home-arrow { transform: translateX(-2px); }
+.back-home:focus-visible { outline: 3px solid rgba(238,70,84,.35); outline-offset: 3px; }
+
+/* Compact editorial page heading */
+.hero {
+    position: relative;
+    isolation: isolate;
+    overflow: hidden;
+    margin: 0 auto 12px;
+    padding: 22px 20px 20px;
+    text-align: center;
+    background: linear-gradient(180deg, rgba(255,255,255,.025), transparent);
+}
+.hero::before {
+    content: "";
+    position: absolute;
+    z-index: -1;
+    top: -130px;
+    left: 50%;
+    width: 300px;
+    height: 180px;
+    transform: translateX(-50%);
+    background: linear-gradient(90deg, var(--accent), var(--accent-deep));
+    filter: blur(100px);
+    opacity: .13;
+    pointer-events: none;
+}
+.hero::after {
+    content: "";
+    position: absolute;
+    bottom: 0;
+    left: 50%;
+    width: min(1100px, 88%);
+    height: 1px;
+    transform: translateX(-50%);
+    background: linear-gradient(90deg, transparent, rgba(238,70,84,.55), transparent);
+}
+.hero h1 {
+    position: relative;
+    margin: 0 auto 7px;
+    color: #f5f5f6;
+    font-size: clamp(29px, 3.8vw, 40px);
+    font-weight: 850;
+    line-height: 1.12;
+    letter-spacing: -.045em;
+}
+.hero p {
+    position: relative;
+    max-width: 680px;
+    margin: 0 auto;
+    color: var(--muted);
+    font-size: 13px;
+    line-height: 1.7;
+}
+.updated {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    margin-top: 9px;
+    padding: 6px 11px;
+    border: 1px solid rgba(238,70,84,.23);
+    border-radius: 999px;
+    background: rgba(238,70,84,.09);
+    color: #ff929a;
+    box-shadow: 0 4px 14px rgba(0,0,0,.12);
+    font-size: 11px;
+    font-weight: 700;
+}
+
+.container { width: min(var(--content-width), 90%); margin: 0 auto; }
+.policy-box, .terms-box {
+    margin: 14px auto 48px;
+    padding: clamp(22px, 4vw, 42px);
+    border: 1px solid rgba(255,255,255,.10);
+    border-radius: 22px;
+    background: linear-gradient(145deg, rgba(25,25,29,.97), rgba(18,18,21,.98));
+    outline: 1px solid rgba(255,255,255,.025);
+    box-shadow: 0 16px 48px rgba(0,0,0,.30), inset 0 1px 0 rgba(255,255,255,.035);
+}
+.policy-section, .terms-section {
+    position: relative;
+    padding: 4px 0 27px;
+    margin: 0 0 26px;
+}
+.policy-section::after, .terms-section::after {
+    content: "";
+    position: absolute;
+    right: 0;
+    bottom: 0;
+    left: 0;
+    height: 1px;
+    background: linear-gradient(90deg, rgba(238,70,84,.38), rgba(184,50,72,.18), rgba(255,255,255,.025), transparent);
+}
+.policy-section:last-child, .terms-section:last-child { padding-bottom: 0; margin-bottom: 0; }
+.policy-section:last-child::after, .terms-section:last-child::after { display: none; }
+.policy-section h2, .terms-section h2 {
+    margin-bottom: 11px;
+    color: #f4f4f5;
+    font-size: clamp(18px, 2vw, 22px);
+    font-weight: 800;
+    line-height: 1.35;
+    letter-spacing: -.025em;
+}
+.policy-section h3, .terms-section h3 {
+    margin: 17px 0 7px;
+    color: #f1f1f2;
+    font-size: 14px;
+    font-weight: 750;
+    line-height: 1.45;
+}
+.policy-section p, .terms-section p,
+.policy-section li, .terms-section li {
+    color: var(--muted);
+    font-size: 13.5px;
+    line-height: 1.85;
+}
+.policy-section p + p, .terms-section p + p { margin-top: 10px; }
+.policy-section ul, .terms-section ul { margin: 10px 0 12px 22px; }
+.policy-section li, .terms-section li { margin-bottom: 5px; padding-left: 3px; }
+.policy-section li::marker, .terms-section li::marker { color: #ff7b85; }
+
+/* Red-accent information callouts */
+.highlight, .warning {
+    margin: 16px 0 4px;
+    padding: 17px 19px;
+    border: 1px solid rgba(238,70,84,.20);
+    border-left: 3px solid var(--accent);
+    border-radius: 13px;
+    background: linear-gradient(110deg, rgba(238,70,84,.10), rgba(184,50,72,.035));
+    box-shadow: inset 0 1px 0 rgba(255,255,255,.025);
+}
+.highlight p, .warning p { color: #b8b8bf; font-size: 12.5px; line-height: 1.8; }
+
+footer {
+    margin-top: 26px;
+    padding: 27px 20px;
+    border-top: 1px solid rgba(255,255,255,.10);
+    background: #0d0d10;
+    color: var(--muted-2);
+    text-align: center;
+    font-size: 11.5px;
+}
+footer strong { color: #f3f3f5; font-weight: 750; }
+footer p + p { margin-top: 7px; }
+
+/* Same responsive sizing as About */
+@media (max-width: 650px) {
+    .navbar { min-height: 60px; padding: 10px 5%; }
+    .navbar-logo img { width: 34px; height: 34px; }
+    .back-home { min-height: 36px; padding: 8px 12px; gap: 6px; font-size: 12px; }
+    .back-home-arrow { font-size: 17px; }
+    .hero { padding: 18px 16px 16px; }
+    .hero h1 { font-size: 29px; }
+    .hero p { max-width: 520px; font-size: 12.5px; }
+    .container { width: 92%; }
+    .policy-box, .terms-box { margin-top: 10px; padding: 22px 18px; border-radius: 18px; }
+    .policy-section, .terms-section { padding-bottom: 21px; margin-bottom: 20px; }
+}
+@media (max-width: 360px) {
+    .navbar { padding-left: 4%; padding-right: 4%; }
+    .back-home { padding: 8px 10px; }
+}
+@media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after { scroll-behavior: auto !important; transition-duration: .01ms !important; }
+}
 </style>
+</head>
+<body>
+<nav class="navbar" aria-label="Main navigation">
+    <a href="index.html" class="navbar-logo" aria-label="AppExio home">
+        <img src="favicon.png" alt="AppExio">
+    </a>
 
-<style id="appexio-compact-premium-light">
-:root{color-scheme:light;--ax-ink:#17243a;--ax-muted:#64748b;--ax-line:rgba(81,103,145,.17);--ax-violet:#6757dc;--ax-blue:#3299e8}
-html,body{background:#f5f8fd!important;color:var(--ax-ink)!important}
-body{background:radial-gradient(ellipse at 8% 0%,rgba(115,99,224,.10),transparent 30%),radial-gradient(ellipse at 95% 12%,rgba(52,158,226,.09),transparent 28%),#f5f8fd!important}
-.navbar{min-height:68px!important;padding:12px clamp(18px,5vw,72px)!important;background:rgba(255,255,255,.82)!important;border:1px solid rgba(255,255,255,.88)!important;border-bottom:1px solid var(--ax-line)!important;box-shadow:0 7px 28px rgba(41,60,100,.055)!important;backdrop-filter:blur(22px)!important}
-.navbar-logo img{width:34px!important;height:34px!important;object-fit:contain!important}
-.hero{padding:clamp(24px,4vw,42px) 20px 24px!important;margin:0 auto!important;max-width:1100px!important;overflow:visible!important;text-align:center!important;background:transparent!important}
-.hero:before{width:280px!important;height:220px!important;filter:blur(120px)!important;opacity:.08!important;top:-90px!important}
-.hero h1{font-size:clamp(30px,4.4vw,46px)!important;line-height:1.08!important;letter-spacing:-1.7px!important;margin:0!important;color:#17243a!important}
-.hero h1 span{background:linear-gradient(105deg,#6757dc,#3299e8)!important;-webkit-background-clip:text!important;background-clip:text!important;color:transparent!important}
-.hero p{font-size:14px!important;line-height:1.7!important;max-width:640px!important;margin:10px auto 0!important;color:#64748b!important}
-.updated{margin-top:13px!important;padding:6px 12px!important;font-size:11px!important;background:rgba(103,87,220,.07)!important;border:1px solid rgba(103,87,220,.16)!important;color:#5b4dc4!important}
-.container{width:min(90%,1040px)!important;max-width:1040px!important;margin:0 auto 48px!important}
-.terms-box,.policy-box{position:relative!important;overflow:hidden!important;padding:clamp(20px,4vw,40px)!important;margin:0 auto 48px!important;background:rgba(255,255,255,.76)!important;border:1px solid rgba(255,255,255,.95)!important;border-radius:24px!important;box-shadow:0 18px 50px rgba(43,62,105,.075),inset 0 1px 0 rgba(255,255,255,.95)!important;backdrop-filter:blur(18px)!important}
-.terms-box:before,.policy-box:before{content:"";position:absolute;inset:0 0 auto;height:3px;background:linear-gradient(90deg,transparent,#8b7af0 25%,#69b9ef 72%,transparent);opacity:.8}
-.section,.terms-section,.policy-section{position:relative!important;border-bottom:1px solid rgba(91,111,151,.14)!important;padding:0 0 25px!important;margin:0 0 25px!important}
-.section:last-child,.terms-section:last-child,.policy-section:last-child{border-bottom:0!important;margin-bottom:0!important;padding-bottom:0!important}
-.terms-section h2,.policy-section h2,.section h2{font-size:clamp(19px,2.4vw,23px)!important;letter-spacing:-.35px!important;color:#1b2942!important;margin-bottom:10px!important}
-.terms-section h3,.policy-section h3{font-size:16px!important;color:#33435f!important}
-.terms-section p,.policy-section p,.terms-section li,.policy-section li,.section p{font-size:14px!important;line-height:1.8!important;color:#59677e!important}
-.highlight,.warning{border-radius:12px!important;box-shadow:inset 0 0 0 1px rgba(255,255,255,.65)!important}
-footer{padding:28px 20px!important;color:#718096!important;border-top:1px solid var(--ax-line)!important;background:rgba(255,255,255,.48)!important}
-footer strong{color:#263653!important}
-@media(max-width:700px){.navbar{min-height:60px!important}.hero{padding:24px 18px 20px!important}.hero h1{letter-spacing:-1px!important}.container{width:92%!important;margin-bottom:30px!important}.terms-box,.policy-box{padding:22px 18px!important;border-radius:19px!important}.terms-section,.policy-section,.section{padding-bottom:20px!important;margin-bottom:20px!important}}
-</style>
-
-
-<style id="appexio-premium-compact-light">
-/* Compact AppExio editorial header + refined glass separators */
-:root{--apx-ink:#17233b;--apx-muted:#65728a;--apx-line:rgba(79,101,145,.15);--apx-violet:#6957d8;--apx-blue:#258ed5}
-html,body{background:#f6f8fc!important}
-body{color:var(--apx-ink)!important;background:radial-gradient(ellipse at 12% 0%,rgba(105,87,216,.055),transparent 32%),radial-gradient(ellipse at 92% 18%,rgba(37,142,213,.045),transparent 28%),#f6f8fc!important}
-.navbar{min-height:66px!important;padding:10px clamp(18px,6vw,82px)!important;background:rgba(255,255,255,.82)!important;border-bottom:1px solid rgba(91,111,151,.14)!important;box-shadow:0 5px 24px rgba(31,49,83,.045)!important;backdrop-filter:blur(22px)!important}
-.navbar-logo img{width:34px!important;height:34px!important;max-width:34px!important}
-.nav-links a{border-radius:999px!important;padding:9px 14px!important;background:rgba(255,255,255,.62)!important;border:1px solid rgba(91,111,151,.15)!important;color:#52617a!important}
-.nav-links a:hover{background:#fff!important;color:#5140c5!important;border-color:rgba(105,87,216,.32)!important}
-.hero{padding:22px 20px 20px!important;margin:0 auto 12px!important;background:linear-gradient(180deg,rgba(255,255,255,.48),rgba(255,255,255,0))!important;overflow:hidden!important}
-.hero:before{width:300px!important;height:180px!important;top:-130px!important;filter:blur(100px)!important;opacity:.12!important}
-.hero:after{width:min(1100px,88%)!important;background:linear-gradient(90deg,transparent,rgba(105,87,216,.2),rgba(37,142,213,.18),transparent)!important}
-.hero h1{font-size:clamp(27px,3.8vw,39px)!important;line-height:1.12!important;letter-spacing:-.045em!important;font-weight:850!important;margin:0 auto 7px!important;color:#17233b!important}
-.hero h1 span{background:linear-gradient(100deg,#6957d8,#258ed5)!important;-webkit-background-clip:text!important;background-clip:text!important;color:transparent!important}
-.hero p{font-size:13px!important;line-height:1.6!important;max-width:680px!important;margin:0 auto!important;color:#65728a!important}
-.updated{margin-top:9px!important;padding:6px 11px!important;font-size:11px!important;background:rgba(255,255,255,.72)!important;border:1px solid rgba(105,87,216,.17)!important;color:#5b4bc3!important;box-shadow:0 4px 14px rgba(31,49,83,.035)!important}
-.container{width:min(1080px,90%)!important;margin:0 auto!important}
-.policy-box,.terms-box{margin:14px auto 48px!important;padding:clamp(22px,4vw,42px)!important;border-radius:22px!important;background:rgba(255,255,255,.78)!important;border:1px solid rgba(255,255,255,.92)!important;outline:1px solid rgba(88,108,148,.11)!important;box-shadow:0 16px 48px rgba(36,54,89,.065),inset 0 1px 0 rgba(255,255,255,.95)!important;backdrop-filter:blur(18px)!important}
-.policy-section,.terms-section{position:relative!important;padding:4px 0 25px!important;margin:0 0 25px!important;border:0!important}
-.policy-section:after,.terms-section:after{content:"";position:absolute;left:0;right:0;bottom:0;height:1px;background:linear-gradient(90deg,rgba(105,87,216,.22),rgba(75,145,196,.13),rgba(91,111,151,.035),transparent)}
-.policy-section:last-child:after,.terms-section:last-child:after{display:none}
-.policy-section h2,.terms-section h2{font-size:clamp(18px,2vw,22px)!important;letter-spacing:-.025em!important;color:#1c2942!important;margin-bottom:10px!important}
-.policy-section h3,.terms-section h3{color:#33415c!important}
-.policy-section p,.policy-section li,.terms-section p,.terms-section li{color:#59677f!important;font-size:13.5px!important;line-height:1.8!important}
-.highlight{background:linear-gradient(110deg,rgba(105,87,216,.065),rgba(37,142,213,.035))!important;border:1px solid rgba(105,87,216,.14)!important;border-left:3px solid #7564df!important;border-radius:12px!important;box-shadow:inset 0 1px 0 rgba(255,255,255,.8)!important}
-.warning{background:rgba(230,169,62,.075)!important;border:1px solid rgba(211,157,58,.17)!important;border-left:3px solid #d69a35!important;border-radius:12px!important}
-footer{margin-top:26px!important;padding:27px 20px!important;background:rgba(255,255,255,.38)!important;border-top:1px solid rgba(91,111,151,.13)!important;color:#77839a!important}
-@media(max-width:800px){.hero{padding:18px 16px 16px!important}.navbar{min-height:60px!important}.nav-links{background:rgba(255,255,255,.97)!important;border-bottom:1px solid rgba(91,111,151,.14)!important;backdrop-filter:blur(18px)!important}.policy-box,.terms-box{padding:22px 18px!important;margin-top:10px!important}.container{width:92%!important}}
-@media(max-width:480px){.hero h1{font-size:29px!important}.hero p{font-size:12.5px!important}.policy-section,.terms-section{padding-bottom:20px!important;margin-bottom:20px!important}}
-</style>
-
-</head><body>
-<nav class="navbar"><a href="index.html" class="navbar-logo"><img src="favicon.png" alt="AppExio"></a><div class="nav-links" id="navLinks"><a href="index.html">← Back to home</a></div><div class="menu-btn" onclick="toggleMenu()">☰</div></nav>
+    <a href="index.html" class="back-home" aria-label="Back to home">
+        <span class="back-home-arrow" aria-hidden="true">←</span>
+        <span>Back to Home</span>
+    </a>
+</nav>
 <section class="hero"><h1>Terms</h1><p>Please read these Terms and Conditions carefully before using AppExio.</p><div class="updated">Last Updated: August 22, 2026</div></section><main class="container"><div class="terms-box">
 <section class="terms-section"><h2>1. Acceptance of Terms</h2><p>Welcome to AppExio. By accessing, browsing, or using this website, you agree to be bound by these Terms and Conditions.</p><p>If you do not agree with any part of these Terms, please discontinue your use of the website.</p><div class="highlight"><p>Your continued use of AppExio after changes are posted constitutes acceptance of the updated Terms.</p></div></section>
 <section class="terms-section"><h2>2. About AppExio</h2><p>AppExio is an online platform that provides information, descriptions, screenshots, links, and other resources relating to Android and PC applications, games, modified game releases, and PC games or compatible gaming experiences for Android devices.</p><p>AppExio may change, update, remove, or reorganize website content at any time without prior notice.</p></section>
@@ -88,34 +280,4 @@ footer{margin-top:26px!important;padding:27px 20px!important;background:rgba(255
 <section class="terms-section"><h2>15. Website Availability</h2><p>AppExio may modify, suspend, restrict, or discontinue any part of the website, including specific pages, categories, download links, or services, at any time.</p><p>We may also remove outdated or unavailable content without prior notice.</p></section>
 <section class="terms-section"><h2>16. Changes to These Terms</h2><p>AppExio may update these Terms and Conditions from time to time.</p><p>Changes become effective when the revised Terms are published on this page. You should periodically review this page to remain informed about the current Terms.</p></section>
 <section class="terms-section"><h2>17. Applicable Law</h2><p>These Terms shall be interpreted and applied in accordance with applicable laws and regulations.</p><p>If you have specific legal questions regarding these Terms, you should obtain advice from a qualified legal professional in your jurisdiction.</p></section>
-</div></main><footer><p>© 2026 <strong>AppExio</strong>. All rights reserved.</p><p style="margin-top:8px;">Apps • Games • MOD Games • PC Games for Android</p></footer><script>function toggleMenu(){document.getElementById('navLinks').classList.toggle('show')}</script>
-<style id="appexio-unified-dark-terms-theme">
-:root { color-scheme:dark; }
-html, body { width:100%; max-width:100%; overflow-x:hidden !important; }
-html { background:#0b0b0d !important; color-scheme:dark; }
-body { background:#0b0b0d !important; color:#f4f4f5 !important; overflow-wrap:anywhere; }
-.navbar { background:rgba(12,12,14,.94) !important; border-bottom:1px solid rgba(255,255,255,.1) !important; }
-.nav-links a { color:#b5b5bd !important; }
-.nav-links a:hover { color:#ff7882 !important; }
-.menu-btn { color:#f4f4f5 !important; }
-.hero { background:radial-gradient(ellipse at 50% 0%,rgba(238,70,84,.12),transparent 65%) !important; }
-.hero h1 { color:#f5f5f6 !important; }
-.hero h1 span { background:linear-gradient(100deg,#fff,#ff7882) !important; -webkit-background-clip:text !important; background-clip:text !important; color:transparent !important; }
-.hero p { color:#a5a5ad !important; }
-.updated { background:rgba(238,70,84,.1) !important; border-color:rgba(238,70,84,.25) !important; color:#ff929a !important; }
-.terms-box { background:linear-gradient(145deg,#19191d,#121215) !important; border:1px solid rgba(255,255,255,.11) !important; box-shadow:0 16px 45px rgba(0,0,0,.28) !important; }
-.terms-section { border-color:rgba(255,255,255,.1) !important; }
-.terms-section h2 { color:#f4f4f5 !important; }
-.terms-section h3 { color:#e4e4e8 !important; }
-.terms-section p, .terms-section ul { color:#a5a5ad !important; }
-.terms-section li { color:#a5a5ad !important; }
-.highlight { background:rgba(238,70,84,.08) !important; border-left-color:#ee4654 !important; }
-.warning { background:rgba(215,157,59,.08) !important; border-left-color:#d49b42 !important; }
-.highlight p, .warning p { color:#b6b6bd !important; }
-.email { color:#ff8790 !important; }
-footer { background:#0d0d10 !important; border-top:1px solid rgba(255,255,255,.1) !important; color:#85858e !important; }
-footer strong { color:#f3f3f5 !important; }
-@media(max-width:800px) { .nav-links { background:rgba(14,14,17,.98) !important; border-color:rgba(255,255,255,.1) !important; } }
-</style>
-
-</body></html>
+</div></main><footer><p>© 2026 <strong>AppExio</strong>. All rights reserved.</p><p style="margin-top:8px;">Apps • Games • MOD Games • PC Games for Android</p></footer></body></html>
