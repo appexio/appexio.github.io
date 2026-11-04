@@ -333,22 +333,108 @@
             *, *::before, *::after { scroll-behavior: auto !important; transition-duration: .01ms !important; }
         }
     </style>
+
+<style id="appexio-simple-back-navigation">
+/* Shared compact navigation for About, Privacy and Terms */
+.navbar {
+    display: flex !important;
+    align-items: center !important;
+    justify-content: space-between !important;
+    gap: 16px !important;
+}
+
+.back-home {
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    gap: 8px !important;
+    min-height: 38px;
+    padding: 8px 15px !important;
+    border: 1px solid rgba(255,255,255,.13) !important;
+    border-radius: 999px !important;
+    background: rgba(255,255,255,.045) !important;
+    color: #e4e4e7 !important;
+    font-size: 12.5px !important;
+    font-weight: 650 !important;
+    line-height: 1 !important;
+    white-space: nowrap;
+    text-decoration: none !important;
+    transition: background .2s ease, border-color .2s ease, color .2s ease, transform .2s ease;
+}
+
+.back-home-arrow {
+    display: inline-block;
+    font-size: 18px;
+    line-height: .8;
+    transition: transform .2s ease;
+}
+
+.back-home:hover {
+    color: #ff929a !important;
+    background: rgba(238,70,84,.11) !important;
+    border-color: rgba(238,70,84,.42) !important;
+    transform: translateX(-2px);
+}
+
+.back-home:hover .back-home-arrow {
+    transform: translateX(-2px);
+}
+
+.back-home:focus-visible {
+    outline: 3px solid rgba(238,70,84,.35);
+    outline-offset: 3px;
+}
+
+/* No hamburger or expandable menu on any screen */
+.menu-btn,
+.nav-links {
+    display: none !important;
+}
+
+@media (max-width: 650px) {
+    .navbar {
+        min-height: 60px !important;
+        padding: 10px 5% !important;
+    }
+
+    .navbar-logo img {
+        width: 34px !important;
+        height: 34px !important;
+        max-width: 34px !important;
+        object-fit: contain !important;
+    }
+
+    .back-home {
+        min-height: 36px;
+        padding: 8px 12px !important;
+        gap: 6px !important;
+        font-size: 12px !important;
+    }
+
+    .back-home-arrow {
+        font-size: 17px;
+    }
+}
+
+@media (max-width: 360px) {
+    .navbar { padding-left: 4% !important; padding-right: 4% !important; }
+    .back-home { padding: 8px 10px !important; }
+}
+</style>
+
 </head>
 
 <body>
     <nav class="navbar" aria-label="Main navigation">
-        <a href="index.html" class="navbar-logo" aria-label="AppExio home">
-            <img src="favicon.png" alt="AppExio">
-        </a>
+    <a href="index.html" class="navbar-logo" aria-label="AppExio home">
+        <img src="favicon.png" alt="AppExio">
+    </a>
 
-        <div class="nav-links" id="navLinks">
-            <a href="index.html">← Back to Home</a>
-        </div>
-
-        <button class="menu-btn" id="menuBtn" type="button" aria-label="Open navigation menu" aria-expanded="false" aria-controls="navLinks">
-            <span aria-hidden="true">☰</span>
-        </button>
-    </nav>
+    <a href="index.html" class="back-home" aria-label="Back to home">
+        <span class="back-home-arrow" aria-hidden="true">←</span>
+        <span>Back to Home</span>
+    </a>
+</nav>
 
     <header class="hero">
         <h1>About</h1>
@@ -457,33 +543,6 @@
         <p>Apps <span aria-hidden="true">•</span> Games <span aria-hidden="true">•</span> MOD Games <span aria-hidden="true">•</span> PC Games for Android</p>
     </footer>
 
-    <script>
-        const menuBtn = document.getElementById('menuBtn');
-        const navLinks = document.getElementById('navLinks');
-
-        function toggleMenu() {
-            const isOpen = navLinks.classList.toggle('show');
-            menuBtn.setAttribute('aria-expanded', String(isOpen));
-            menuBtn.setAttribute('aria-label', isOpen ? 'Close navigation menu' : 'Open navigation menu');
-        }
-
-        menuBtn.addEventListener('click', toggleMenu);
-
-        document.addEventListener('keydown', (event) => {
-            if (event.key === 'Escape' && navLinks.classList.contains('show')) {
-                navLinks.classList.remove('show');
-                menuBtn.setAttribute('aria-expanded', 'false');
-                menuBtn.setAttribute('aria-label', 'Open navigation menu');
-            }
-        });
-
-        document.addEventListener('click', (event) => {
-            if (!navLinks.contains(event.target) && !menuBtn.contains(event.target) && navLinks.classList.contains('show')) {
-                navLinks.classList.remove('show');
-                menuBtn.setAttribute('aria-expanded', 'false');
-                menuBtn.setAttribute('aria-label', 'Open navigation menu');
-            }
-        });
-    </script>
+    
 </body>
 </html>
