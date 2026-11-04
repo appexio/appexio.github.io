@@ -1,0 +1,489 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <script>(function(s){s.dataset.zone='12053358',s.src='https://al5sm.com/tag.min.js'})([document.documentElement,document.body].filter(Boolean).pop().appendChild(document.createElement('script')))</script>
+    <script>(function(s){s.dataset.zone='12053359',s.src='https://n6wxm.com/vignette.min.js'})([document.documentElement,document.body].filter(Boolean).pop().appendChild(document.createElement('script')))</script>
+
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="theme-color" content="#0b0b0d">
+    <meta name="description" content="Learn about AppExio, a digital destination for discovering Android apps, games, MOD games, and PC gaming content.">
+    <title>About | AppExio</title>
+
+    <link rel="icon" type="image/png" href="favicon.png">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+
+    <style>
+        :root {
+            color-scheme: dark;
+            --bg: #0b0b0d;
+            --surface: #19191d;
+            --surface-deep: #121215;
+            --line: rgba(255,255,255,.11);
+            --text: #f4f4f5;
+            --muted: #a5a5ad;
+            --muted-2: #85858e;
+            --accent: #ee4654;
+            --accent-deep: #b83248;
+            --accent-soft: rgba(238,70,84,.10);
+            --content-width: 1080px;
+        }
+
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        html { min-width: 320px; scroll-behavior: smooth; background: var(--bg); color-scheme: dark; }
+        body {
+            min-width: 320px;
+            width: 100%;
+            overflow-x: hidden;
+            font-family: Inter, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+            line-height: 1.75;
+            color: var(--text);
+            background: radial-gradient(ellipse at 50% -18%, rgba(238,70,84,.12), transparent 44%), var(--bg);
+            -webkit-font-smoothing: antialiased;
+            text-rendering: optimizeLegibility;
+        }
+        a { color: inherit; text-decoration: none; }
+        button { font: inherit; }
+
+        /* Compact glass navigation, matching the Privacy page */
+        .navbar {
+            position: sticky;
+            top: 0;
+            z-index: 1000;
+            min-height: 66px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 10px clamp(18px, 6vw, 82px);
+            background: rgba(12,12,14,.94);
+            border-bottom: 1px solid rgba(255,255,255,.10);
+            box-shadow: 0 8px 28px rgba(0,0,0,.22);
+            backdrop-filter: blur(22px);
+            -webkit-backdrop-filter: blur(22px);
+        }
+        .navbar-logo { display: inline-flex; align-items: center; justify-content: center; flex: 0 0 auto; }
+        .navbar-logo img { display: block; width: 36px; height: 36px; object-fit: contain; }
+        .nav-links { display: flex; align-items: center; gap: 12px; }
+        .nav-links a {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            min-height: 38px;
+            padding: 8px 15px;
+            border: 1px solid rgba(255,255,255,.10);
+            border-radius: 999px;
+            background: rgba(255,255,255,.025);
+            color: #b5b5bd;
+            font-size: 12px;
+            font-weight: 650;
+            transition: color .2s ease, background .2s ease, border-color .2s ease, transform .2s ease;
+        }
+        .nav-links a:hover {
+            color: #fff;
+            border-color: rgba(238,70,84,.45);
+            background: rgba(238,70,84,.10);
+            transform: translateY(-1px);
+        }
+        .menu-btn {
+            display: none;
+            width: 40px;
+            height: 40px;
+            place-items: center;
+            border: 1px solid var(--line);
+            border-radius: 12px;
+            background: rgba(255,255,255,.035);
+            color: var(--text);
+            font-size: 21px;
+            cursor: pointer;
+        }
+
+        /* Small editorial page heading */
+        .hero {
+            position: relative;
+            isolation: isolate;
+            overflow: hidden;
+            margin: 0 auto 12px;
+            padding: 22px 20px 20px;
+            text-align: center;
+            background: linear-gradient(180deg, rgba(255,255,255,.025), transparent);
+        }
+        .hero::before {
+            content: "";
+            position: absolute;
+            z-index: -1;
+            top: -130px;
+            left: 50%;
+            width: 300px;
+            height: 180px;
+            transform: translateX(-50%);
+            background: linear-gradient(90deg, var(--accent), var(--accent-deep));
+            filter: blur(100px);
+            opacity: .13;
+            pointer-events: none;
+        }
+        .hero::after {
+            content: "";
+            position: absolute;
+            bottom: 0;
+            left: 50%;
+            width: min(1100px, 88%);
+            height: 1px;
+            transform: translateX(-50%);
+            background: linear-gradient(90deg, transparent, rgba(238,70,84,.55), transparent);
+        }
+        .hero h1 {
+            position: relative;
+            margin: 0 auto 7px;
+            color: #f5f5f6;
+            font-size: clamp(29px, 3.8vw, 40px);
+            font-weight: 850;
+            line-height: 1.12;
+            letter-spacing: -.045em;
+        }
+        .hero p {
+            position: relative;
+            max-width: 680px;
+            margin: 0 auto;
+            color: var(--muted);
+            font-size: 13px;
+            line-height: 1.7;
+        }
+
+        .container { width: min(var(--content-width), 90%); margin: 0 auto; }
+        .about-box {
+            margin: 14px auto 48px;
+            padding: clamp(22px, 4vw, 42px);
+            border: 1px solid rgba(255,255,255,.10);
+            border-radius: 22px;
+            background: linear-gradient(145deg, rgba(25,25,29,.97), rgba(18,18,21,.98));
+            outline: 1px solid rgba(255,255,255,.025);
+            box-shadow: 0 16px 48px rgba(0,0,0,.30), inset 0 1px 0 rgba(255,255,255,.035);
+        }
+        .about-section {
+            position: relative;
+            padding: 4px 0 27px;
+            margin: 0 0 26px;
+        }
+        .about-section::after {
+            content: "";
+            position: absolute;
+            right: 0;
+            bottom: 0;
+            left: 0;
+            height: 1px;
+            background: linear-gradient(90deg, rgba(238,70,84,.38), rgba(184,50,72,.18), rgba(255,255,255,.025), transparent);
+        }
+        .about-section:last-child { padding-bottom: 0; margin-bottom: 0; }
+        .about-section:last-child::after { display: none; }
+        .section-heading {
+            margin-bottom: 11px;
+            color: #f4f4f5;
+            font-size: clamp(18px, 2vw, 22px);
+            font-weight: 800;
+            line-height: 1.35;
+            letter-spacing: -.025em;
+        }
+        .section-copy {
+            max-width: 920px;
+            color: var(--muted);
+            font-size: 13.5px;
+            line-height: 1.85;
+        }
+        .section-copy + .section-copy { margin-top: 12px; }
+
+        /* Feature cards */
+        .feature-grid {
+            display: grid;
+            grid-template-columns: repeat(3, minmax(0, 1fr));
+            gap: 13px;
+            margin-top: 19px;
+        }
+        .feature-card {
+            min-width: 0;
+            padding: 19px 18px;
+            border: 1px solid rgba(255,255,255,.09);
+            border-radius: 15px;
+            background: linear-gradient(145deg, rgba(255,255,255,.045), rgba(255,255,255,.018));
+            transition: transform .22s ease, border-color .22s ease, background .22s ease;
+        }
+        .feature-card:hover {
+            transform: translateY(-3px);
+            border-color: rgba(238,70,84,.34);
+            background: linear-gradient(145deg, rgba(238,70,84,.075), rgba(255,255,255,.018));
+        }
+        .feature-icon {
+            display: grid;
+            width: 42px;
+            height: 42px;
+            margin-bottom: 13px;
+            place-items: center;
+            border: 1px solid rgba(238,70,84,.22);
+            border-radius: 12px;
+            background: rgba(238,70,84,.11);
+            font-size: 20px;
+        }
+        .feature-card h3 { margin-bottom: 6px; color: #f1f1f2; font-size: 14px; font-weight: 750; line-height: 1.4; }
+        .feature-card p { color: var(--muted); font-size: 12px; line-height: 1.75; }
+
+        /* Mission and responsibility callouts */
+        .mission {
+            position: relative;
+            overflow: hidden;
+            padding: 22px 24px;
+            border: 1px solid rgba(238,70,84,.22);
+            border-left: 3px solid var(--accent);
+            border-radius: 14px;
+            background: linear-gradient(110deg, rgba(238,70,84,.10), rgba(184,50,72,.035));
+        }
+        .mission::after {
+            content: "✦";
+            position: absolute;
+            top: 2px;
+            right: 18px;
+            color: rgba(238,70,84,.12);
+            font-size: 65px;
+            line-height: 1;
+            pointer-events: none;
+        }
+        .mission h2 { position: relative; z-index: 1; margin-bottom: 8px; color: #f4f4f5; font-size: 21px; font-weight: 800; letter-spacing: -.03em; }
+        .mission p { position: relative; z-index: 1; max-width: 850px; color: var(--muted); font-size: 13.5px; line-height: 1.85; }
+
+        .stats-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; margin-top: 17px; }
+        .stat-card {
+            min-width: 0;
+            padding: 17px 15px;
+            border: 1px solid rgba(255,255,255,.09);
+            border-radius: 14px;
+            background: rgba(255,255,255,.025);
+        }
+        .stat-card h3 { margin-bottom: 3px; color: #ff7b85; font-size: 17px; font-weight: 800; letter-spacing: -.025em; }
+        .stat-card p { color: var(--muted); font-size: 11px; line-height: 1.6; }
+
+        .notice {
+            margin-top: 16px;
+            padding: 18px 20px;
+            border: 1px solid rgba(238,70,84,.20);
+            border-left: 3px solid var(--accent);
+            border-radius: 13px;
+            background: rgba(238,70,84,.065);
+        }
+        .notice h3 { margin-bottom: 6px; color: #f2f2f3; font-size: 14px; font-weight: 750; }
+        .notice p { color: var(--muted); font-size: 12.5px; line-height: 1.8; }
+
+        footer {
+            margin-top: 26px;
+            padding: 27px 20px;
+            border-top: 1px solid rgba(255,255,255,.10);
+            background: #0d0d10;
+            color: var(--muted-2);
+            text-align: center;
+            font-size: 11.5px;
+        }
+        footer strong { color: #f3f3f5; font-weight: 750; }
+        footer p + p { margin-top: 7px; }
+
+        @media (max-width: 850px) {
+            .feature-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+            .stats-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+        }
+        @media (max-width: 650px) {
+            .navbar { min-height: 60px; padding: 9px 5%; }
+            .navbar-logo img { width: 34px; height: 34px; }
+            .menu-btn { display: grid; }
+            .nav-links {
+                position: absolute;
+                top: calc(100% + 1px);
+                right: 0;
+                left: 0;
+                display: none;
+                flex-direction: column;
+                align-items: stretch;
+                gap: 9px;
+                padding: 15px 5% 18px;
+                border-bottom: 1px solid rgba(255,255,255,.10);
+                background: rgba(14,14,17,.98);
+                backdrop-filter: blur(18px);
+                -webkit-backdrop-filter: blur(18px);
+            }
+            .nav-links.show { display: flex; }
+            .nav-links a { width: 100%; min-height: 42px; background: rgba(255,255,255,.025); }
+            .hero { padding: 18px 16px 16px; }
+            .hero h1 { font-size: 29px; }
+            .hero p { max-width: 520px; font-size: 12.5px; }
+            .container { width: 92%; }
+            .about-box { margin-top: 10px; padding: 22px 18px; border-radius: 18px; }
+            .about-section { padding-bottom: 21px; margin-bottom: 20px; }
+            .feature-grid { gap: 10px; }
+            .feature-card { padding: 15px 13px; }
+            .feature-card h3 { font-size: 12.5px; }
+            .feature-card p { font-size: 11.5px; }
+            .mission { padding: 19px 17px; }
+            .mission h2 { font-size: 19px; }
+        }
+        @media (max-width: 380px) {
+            .feature-grid { grid-template-columns: 1fr; }
+            .stats-grid { gap: 9px; }
+            .stat-card { padding: 14px 12px; }
+            .stat-card h3 { font-size: 15px; }
+            .stat-card p { font-size: 10.5px; }
+        }
+        @media (prefers-reduced-motion: reduce) {
+            *, *::before, *::after { scroll-behavior: auto !important; transition-duration: .01ms !important; }
+        }
+    </style>
+</head>
+
+<body>
+    <nav class="navbar" aria-label="Main navigation">
+        <a href="index.html" class="navbar-logo" aria-label="AppExio home">
+            <img src="favicon.png" alt="AppExio">
+        </a>
+
+        <div class="nav-links" id="navLinks">
+            <a href="index.html">← Back to Home</a>
+        </div>
+
+        <button class="menu-btn" id="menuBtn" type="button" aria-label="Open navigation menu" aria-expanded="false" aria-controls="navLinks">
+            <span aria-hidden="true">☰</span>
+        </button>
+    </nav>
+
+    <header class="hero">
+        <h1>About</h1>
+        <p>Discover what AppExio is, what you can find here, and the experience we aim to create.</p>
+    </header>
+
+    <main class="container">
+        <div class="about-box">
+            <section class="about-section">
+                <h2 class="section-heading">Who We Are</h2>
+                <p class="section-copy">
+                    AppExio is a digital destination for Android and PC users, app explorers, and gaming enthusiasts. It is designed to make discovering applications and games simpler through an organized browsing experience and dedicated content pages.
+                </p>
+                <p class="section-copy">
+                    We aim to present useful details clearly, including app names, versions, file sizes, screenshots, requirements, and features wherever that information is available.
+                </p>
+            </section>
+
+            <section class="about-section">
+                <h2 class="section-heading">What You'll Find</h2>
+                <p class="section-copy">Explore different types of digital content, organized to help you find what you are looking for.</p>
+
+                <div class="feature-grid">
+                    <article class="feature-card">
+                        <div class="feature-icon" aria-hidden="true">📱</div>
+                        <h3>Android &amp; PC Apps</h3>
+                        <p>Discover useful applications across different categories, platforms, and purposes.</p>
+                    </article>
+                    <article class="feature-card">
+                        <div class="feature-icon" aria-hidden="true">🎮</div>
+                        <h3>Android &amp; PC Games</h3>
+                        <p>Explore games ranging from casual entertainment to more demanding gaming experiences.</p>
+                    </article>
+                    <article class="feature-card">
+                        <div class="feature-icon" aria-hidden="true">⚡</div>
+                        <h3>MOD Games</h3>
+                        <p>Browse modified game releases where available, with relevant feature information on their pages.</p>
+                    </article>
+                    <article class="feature-card">
+                        <div class="feature-icon" aria-hidden="true">💻</div>
+                        <h3>PC Gaming on Android</h3>
+                        <p>Find information about compatible PC games, Android ports, and supported ways to play.</p>
+                    </article>
+                    <article class="feature-card">
+                        <div class="feature-icon" aria-hidden="true">⌕</div>
+                        <h3>Easy Discovery</h3>
+                        <p>Browse organized categories and dedicated pages to find content more conveniently.</p>
+                    </article>
+                    <article class="feature-card">
+                        <div class="feature-icon" aria-hidden="true">↻</div>
+                        <h3>Content Updates</h3>
+                        <p>We aim to refresh listings as new releases, versions, and information become available.</p>
+                    </article>
+                </div>
+            </section>
+
+            <section class="about-section">
+                <div class="mission">
+                    <h2>Our Mission</h2>
+                    <p>
+                        Our mission is to build AppExio into a reliable, clear, and easy-to-use platform for discovering apps and games. We want visitors to understand what a listing offers, review the available details, and enjoy a smooth browsing experience on both mobile and desktop.
+                    </p>
+                </div>
+            </section>
+
+            <section class="about-section">
+                <h2 class="section-heading">AppExio at a Glance</h2>
+                <p class="section-copy">A place to explore different kinds of apps and gaming content.</p>
+                <div class="stats-grid">
+                    <div class="stat-card">
+                        <h3>Apps</h3>
+                        <p>Android &amp; PC applications</p>
+                    </div>
+                    <div class="stat-card">
+                        <h3>Games</h3>
+                        <p>Android &amp; PC games</p>
+                    </div>
+                    <div class="stat-card">
+                        <h3>MODs</h3>
+                        <p>Modified game releases</p>
+                    </div>
+                    <div class="stat-card">
+                        <h3>PC → Android</h3>
+                        <p>Compatible gaming content</p>
+                    </div>
+                </div>
+            </section>
+
+            <section class="about-section">
+                <h2 class="section-heading">Our Responsibility</h2>
+                <p class="section-copy">
+                    AppExio aims to provide clear and useful information about the content listed on the platform. Before installing any application or game, users should review compatibility, system requirements, permissions, and other relevant details.
+                </p>
+                <div class="notice">
+                    <h3>Important Notice</h3>
+                    <p>
+                        AppExio respects intellectual property rights and does not intend to promote copyright infringement. If you are a copyright owner and believe that content on AppExio infringes your rights, please contact us with the relevant details so the matter can be reviewed appropriately.
+                    </p>
+                </div>
+            </section>
+        </div>
+    </main>
+
+    <footer>
+        <p>© 2026 <strong>AppExio</strong>. All rights reserved.</p>
+        <p>Apps <span aria-hidden="true">•</span> Games <span aria-hidden="true">•</span> MOD Games <span aria-hidden="true">•</span> PC Games for Android</p>
+    </footer>
+
+    <script>
+        const menuBtn = document.getElementById('menuBtn');
+        const navLinks = document.getElementById('navLinks');
+
+        function toggleMenu() {
+            const isOpen = navLinks.classList.toggle('show');
+            menuBtn.setAttribute('aria-expanded', String(isOpen));
+            menuBtn.setAttribute('aria-label', isOpen ? 'Close navigation menu' : 'Open navigation menu');
+        }
+
+        menuBtn.addEventListener('click', toggleMenu);
+
+        document.addEventListener('keydown', (event) => {
+            if (event.key === 'Escape' && navLinks.classList.contains('show')) {
+                navLinks.classList.remove('show');
+                menuBtn.setAttribute('aria-expanded', 'false');
+                menuBtn.setAttribute('aria-label', 'Open navigation menu');
+            }
+        });
+
+        document.addEventListener('click', (event) => {
+            if (!navLinks.contains(event.target) && !menuBtn.contains(event.target) && navLinks.classList.contains('show')) {
+                navLinks.classList.remove('show');
+                menuBtn.setAttribute('aria-expanded', 'false');
+                menuBtn.setAttribute('aria-label', 'Open navigation menu');
+            }
+        });
+    </script>
+</body>
+</html>
