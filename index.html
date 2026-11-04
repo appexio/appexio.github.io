@@ -260,15 +260,21 @@
 
                             version:
                                 data.version ||
+                                data.versionName ||
                                 "",
 
                             size:
                                 data.size ||
+                                data.fileSize ||
+                                data.downloadSize ||
                                 "",
 
                             android:
                                 data.android ||
                                 data.platform ||
+                                data.compatibility ||
+                                data.supportedOS ||
+                                data.os ||
                                 "",
 
                             homepage:
@@ -382,61 +388,48 @@
 
         function createAppCard(app) {
 
-            const card =
-                document.createElement("a");
+            // A div is used as the interactive card container so its preview can
+            // contain a real, accessible download link without nesting links.
+            const card = document.createElement("div");
+            card.className = "app-card";
+            card.setAttribute("role", "button");
+            card.setAttribute("tabindex", "0");
+            card.setAttribute("aria-label", `View ${app.name || "app"} details`);
 
-
-            card.className =
-                "app-card";
-
-            card.href =
-                "#";
-
-            card.setAttribute(
-                "role",
-                "button"
-            );
-
-            card.setAttribute(
-                "tabindex",
-                "0"
-            );
-
-            /* =================================================
-               OPEN APP DETAILS FIRST
-
-               The card no longer downloads the APK directly.
-               Downloading happens from the details view.
-            ================================================= */
-
-            function openDetails(event) {
-
-                event.preventDefault();
-
-                openAppDetails(app);
-
+            function dismissActivePreview() {
+                const state = window.__appexioHoverState;
+                if (!state) return;
+                if (state.hideTimer) window.clearTimeout(state.hideTimer);
+                state.hideTimer = null;
+                if (state.activePreview) {
+                    state.activePreview.classList.remove("is-visible", "is-left");
+                    state.activePreview.setAttribute("aria-hidden", "true");
+                    state.activePreview.remove();
+                    state.activePreview = null;
+                }
             }
 
-            card.addEventListener(
-                "click",
-                openDetails
-            );
-
-            card.addEventListener(
-                "keydown",
-                function (event) {
-
-                    if (
-                        event.key === "Enter" ||
-                        event.key === " "
-                    ) {
-
-                        openDetails(event);
-
-                    }
-
+            function openDetails(event) {
+                if (event && event.target && event.target.closest && event.target.closest(".app-hover-download")) {
+                    return;
                 }
-            );
+                dismissActivePreview();
+                openAppDetails(app);
+            }
+
+            card.addEventListener("click", function (event) {
+                if (event.target.closest && event.target.closest(".app-hover-download")) return;
+                openDetails(event);
+            });
+
+            card.addEventListener("keydown", function (event) {
+                // Let buttons and links inside the preview keep their native keyboard behavior.
+                if (event.target !== card) return;
+                if (event.key === "Enter" || event.key === " ") {
+                    event.preventDefault();
+                    openDetails(event);
+                }
+            });
 
 
             /* =================================================
@@ -641,42 +634,222 @@
                 meta
             );
 
+            /* =================================================
+               PROFESSIONAL HOVER PREVIEW
+               Shows key information without opening the details page.
+            ================================================= */
+            const preview = document.createElement("section");
+            preview.className = "app-hover-preview";
+            preview.setAttribute("aria-hidden", "true");
+
+            const previewBadge = document.createElement("span");
+            previewBadge.className = "app-preview-badge";
+            previewBadge.textContent = app.sourceLabel || app.category || "APPEXIO LISTING";
+
+            const previewIdentity = document.createElement("div");
+            previewIdentity.className = "app-preview-identity";
+
+            const previewIcon = document.createElement("img");
+            previewIcon.className = "app-preview-icon";
+            previewIcon.src = app.icon || "logo.png";
+            previewIcon.alt = "";
+            previewIcon.loading = "lazy";
+            previewIcon.onerror = function () {
+                this.onerror = null;
+                this.src = "logo.png";
+            };
+
+            const previewTitleBox = document.createElement("div");
+            previewTitleBox.className = "app-preview-titlebox";
+            const previewTitle = document.createElement("h3");
+            previewTitle.className = "app-preview-title";
+            previewTitle.textContent = app.name || "Unnamed app";
+            const previewDeveloper = document.createElement("p");
+            previewDeveloper.className = "app-preview-developer";
+            previewDeveloper.textContent = app.developer || "AppExio publisher";
+            previewTitleBox.append(previewTitle, previewDeveloper);
+            previewIdentity.append(previewIcon, previewTitleBox);
+
+            const previewMeta = document.createElement("div");
+            previewMeta.className = "app-preview-meta";
+            const previewRating = document.createElement("span");
+            previewRating.innerHTML = `<i class="fa-solid fa-star"></i> ${escapeHTML(String(app.rating ?? "New"))}`;
+            const previewDownloads = document.createElement("span");
+            previewDownloads.innerHTML = `<i class="fa-solid fa-download"></i> ${escapeHTML(formatDownloads(app.downloads))}`;
+            previewMeta.append(previewRating, previewDownloads);
+
+            const previewSpecs = document.createElement("div");
+            previewSpecs.className = "app-preview-specs";
+            const previewPlatform = app.compatibility || app.android || app.platform || "Not specified";
+            [
+                ["VERSION", app.version || "Not listed"],
+                ["SIZE", app.size || "Not listed"],
+                ["COMPATIBILITY", previewPlatform]
+            ].forEach(([label, value]) => {
+                const spec = document.createElement("div");
+                spec.className = "app-preview-spec";
+                const specLabel = document.createElement("span");
+                specLabel.textContent = label;
+                const specValue = document.createElement("strong");
+                specValue.textContent = String(value);
+                spec.append(specLabel, specValue);
+                previewSpecs.appendChild(spec);
+            });
+
+            const previewDescription = document.createElement("p");
+            previewDescription.className = "app-preview-description";
+            previewDescription.textContent = app.description || "Open the listing to review publisher information, platform support and available downloads.";
+
+            const previewActionRow = document.createElement("div");
+            previewActionRow.className = "app-preview-actions";
+            const previewDownload = document.createElement("a");
+            previewDownload.className = "app-hover-download";
+            previewDownload.innerHTML = `<i class="fa-solid fa-download"></i><span>${escapeHTML(app.downloadLabel || "Download")}</span><i class="fa-solid fa-arrow-up-right-from-square app-preview-external"></i>`;
+            const downloadUrl = String(app.apk || "").trim();
+            let safeDownloadUrl = "";
+            if (downloadUrl && downloadUrl !== "#") {
+                try {
+                    const candidateUrl = new URL(downloadUrl, window.location.href);
+                    if (candidateUrl.protocol === "http:" || candidateUrl.protocol === "https:") safeDownloadUrl = candidateUrl.href;
+                } catch (_) {
+                    safeDownloadUrl = "";
+                }
+            }
+            if (safeDownloadUrl) {
+                previewDownload.href = safeDownloadUrl;
+                previewDownload.target = "_blank";
+                previewDownload.rel = "noopener noreferrer";
+                previewDownload.setAttribute("aria-label", `${app.downloadLabel || "Download"} ${app.name || "app"}`);
+            } else {
+                previewDownload.removeAttribute("href");
+                previewDownload.classList.add("is-unavailable");
+                previewDownload.setAttribute("aria-disabled", "true");
+                previewDownload.title = "A download link has not been added for this item yet.";
+                previewDownload.innerHTML = `<i class="fa-solid fa-circle-info"></i><span>Download unavailable</span>`;
+            }
+            previewDownload.addEventListener("click", event => event.stopPropagation());
+            previewActionRow.appendChild(previewDownload);
+
+            preview.append(previewBadge, previewIdentity, previewMeta, previewSpecs, previewDescription, previewActionRow);
+            card.appendChild(preview);
+
+            // Keep one compact preview open beside the active card. The preview is
+            // portalled to <body> so the pointer can move into it without the
+            // card's bounds closing it prematurely.
+            const hoverState = window.__appexioHoverState || (window.__appexioHoverState = {
+                activePreview: null,
+                hideTimer: null
+            });
+
+            function clearPreviewHideTimer() {
+                if (hoverState.hideTimer) {
+                    window.clearTimeout(hoverState.hideTimer);
+                    hoverState.hideTimer = null;
+                }
+            }
+
+            function positionPreview() {
+                const cardRect = card.getBoundingClientRect();
+                const panelRect = preview.getBoundingClientRect();
+                const panelWidth = panelRect.width || 328;
+                const panelHeight = panelRect.height || 280;
+                const edgeGap = 12;
+                const sideGap = 12;
+                let left = cardRect.right + sideGap;
+                let placeLeft = false;
+
+                // Prefer the right side (like the supplied reference), and
+                // flip to the left only when the right edge would overflow.
+                if (left + panelWidth > window.innerWidth - edgeGap) {
+                    left = cardRect.left - panelWidth - sideGap;
+                    placeLeft = true;
+                }
+                left = Math.max(edgeGap, Math.min(left, window.innerWidth - panelWidth - edgeGap));
+
+                let top = cardRect.top + (cardRect.height - panelHeight) / 2;
+                const maxTop = Math.max(edgeGap, window.innerHeight - panelHeight - edgeGap);
+                top = Math.max(edgeGap, Math.min(top, maxTop));
+
+                preview.style.left = `${left}px`;
+                preview.style.top = `${top}px`;
+                preview.classList.toggle('is-left', placeLeft);
+            }
+
+            function showPreview() {
+                if (!window.matchMedia || !window.matchMedia('(hover: hover) and (pointer: fine)').matches) return;
+                clearPreviewHideTimer();
+
+                if (hoverState.activePreview && hoverState.activePreview !== preview) {
+                    hoverState.activePreview.classList.remove('is-visible', 'is-left');
+                    hoverState.activePreview.setAttribute('aria-hidden', 'true');
+                    hoverState.activePreview.remove();
+                }
+
+                hoverState.activePreview = preview;
+                if (preview.parentNode !== document.body) document.body.appendChild(preview);
+                preview.setAttribute('aria-hidden', 'false');
+                preview.classList.add('is-visible');
+                positionPreview();
+            }
+
+            function hidePreviewSoon() {
+                clearPreviewHideTimer();
+                hoverState.hideTimer = window.setTimeout(() => {
+                    if (hoverState.activePreview !== preview) return;
+                    preview.classList.remove('is-visible', 'is-left');
+                    preview.setAttribute('aria-hidden', 'true');
+                    hoverState.activePreview = null;
+                    window.setTimeout(() => {
+                        if (hoverState.activePreview !== preview && preview.isConnected) preview.remove();
+                    }, 190);
+                    hoverState.hideTimer = null;
+                }, 240);
+            }
+
+            preview.addEventListener('pointerenter', clearPreviewHideTimer);
+            preview.addEventListener('pointerleave', hidePreviewSoon);
+            preview.addEventListener('focusin', clearPreviewHideTimer);
+            preview.addEventListener('focusout', event => {
+                if (!preview.contains(event.relatedTarget)) hidePreviewSoon();
+            });
+
+            card.addEventListener('pointerenter', event => {
+                if (event.pointerType !== 'touch') showPreview();
+            });
+            card.addEventListener('pointerleave', hidePreviewSoon);
+            card.addEventListener('focusin', showPreview);
+            card.addEventListener('focusout', event => {
+                if (!card.contains(event.relatedTarget) && !preview.contains(event.relatedTarget)) hidePreviewSoon();
+            });
+
+            // Reposition an open panel when the viewport changes.
+            if (!window.__appexioPreviewResizeBound) {
+                window.__appexioPreviewResizeBound = true;
+                window.addEventListener('resize', () => {
+                    const active = window.__appexioHoverState && window.__appexioHoverState.activePreview;
+                    if (active && active.isConnected) {
+                        const owner = active.__appexioOwnerCard;
+                        if (owner && owner.isConnected) {
+                            const rect = owner.getBoundingClientRect();
+                            const panel = active.getBoundingClientRect();
+                            let x = rect.right + 12;
+                            if (x + panel.width > window.innerWidth - 12) x = rect.left - panel.width - 12;
+                            x = Math.max(12, Math.min(x, window.innerWidth - panel.width - 12));
+                            let y = rect.top + (rect.height - panel.height) / 2;
+                            y = Math.max(12, Math.min(y, window.innerHeight - panel.height - 12));
+                            active.style.left = `${x}px`;
+                            active.style.top = `${y}px`;
+                        }
+                    }
+                }, { passive: true });
+            }
+            preview.__appexioOwnerCard = card;
 
             /* =================================================
                EXTRA INFORMATION
             ================================================= */
-
-            const extra = [];
-
-
-            if (app.version) {
-
-                extra.push(
-                    "Version: " +
-                    app.version
-                );
-
-            }
-
-
-            if (app.size) {
-
-                extra.push(
-                    "Size: " +
-                    app.size
-                );
-
-            }
-
-
-            if (extra.length) {
-
-                card.title =
-                    extra.join(
-                        " • "
-                    );
-
-            }
+            card.dataset.version = String(app.version || "");
+            card.dataset.size = String(app.size || "");
 
 
             /* =================================================
@@ -2097,6 +2270,42 @@ main{max-width:1500px;margin:auto;padding:0 28px}.store-head{padding:28px 0 18px
 .apps-grid{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:13px}.app-card{position:relative;display:block;min-width:0;padding:13px;border-radius:17px;background:var(--surface);border:1px solid var(--line);transition:.22s;overflow:hidden}.app-card:hover{transform:translateY(-4px);background:#171c27;border-color:rgba(139,108,255,.38);box-shadow:0 16px 30px rgba(0,0,0,.22)}.app-icon{display:block;width:70px;height:70px;object-fit:cover;border-radius:17px;margin-bottom:11px;background:#202633}.verified{position:absolute;top:10px;right:10px;width:21px;height:21px;display:grid;place-items:center;border-radius:50%;background:var(--green);color:#07120c;font-size:9px}.app-name{font-size:13px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.app-developer{font-size:10px;color:var(--muted);margin-top:5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.app-meta{display:flex;gap:8px;align-items:center;margin-top:9px;font-size:10px;color:var(--muted)}.rating{color:#ffd46b}.rating i{margin-right:3px}.downloads{padding-left:8px;border-left:1px solid var(--line)}.loading-state,.empty-state{grid-column:1/-1;min-height:180px;display:grid;place-items:center;text-align:center;color:var(--muted);gap:8px}.empty-state h3{color:#fff}
 .info-row{display:grid;grid-template-columns:repeat(3,1fr);gap:14px}.info-card{padding:20px;border:1px solid var(--line);border-radius:18px;background:var(--surface)}.info-card i{font-size:20px;color:var(--brand);margin-bottom:13px}.info-card h3{font-size:14px;margin-bottom:7px}.info-card p{font-size:11px;color:var(--muted);line-height:1.65}
 footer{border-top:1px solid var(--line);margin-top:15px}.footer-inner{max-width:1500px;margin:auto;padding:30px 28px}.footer-grid{display:grid;grid-template-columns:2fr repeat(3,1fr);gap:35px}.footer-brand p{font-size:11px;color:var(--muted);line-height:1.7;max-width:370px;margin-top:13px}.footer-column h4{font-size:12px;margin-bottom:12px}.footer-column a{display:block;color:var(--muted);font-size:11px;margin:8px 0}.copyright{display:flex;justify-content:space-between;border-top:1px solid var(--line);padding-top:20px;margin-top:25px;font-size:10px;color:#697384}.developer-credit{border:0;text-align:center;padding:5px;color:#687284;font-size:10px}.developer-credit strong{color:#a99aff}
+/* FIXED TOP NAVIGATION */
+.header {
+    position: fixed !important;
+    top: 0;
+    left: 0;
+    right: 0;
+    width: 100%;
+    z-index: 1000;
+}
+
+/* Prevent content from hiding behind the header */
+body {
+    padding-top: 72px;
+}
+
+/* Tablet */
+@media (max-width: 850px) {
+    body {
+        padding-top: 68px;
+    }
+}
+
+/* Mobile */
+@media (max-width: 600px) {
+    .header {
+        height: 110px;
+    }
+
+    body {
+        padding-top: 110px;
+    }
+
+    .store-sidebar {
+        top: 110px;
+    }
+}
 /* =====================================================
    RESPONSIVE — TABLET
 ===================================================== */
@@ -2857,7 +3066,49 @@ main{max-width:none;margin:0 0 0 232px;padding:0 36px}.store-head{padding:32px 0
  main{padding:0 14px!important}.store-head{padding:22px 0 14px}.store-title{font-size:24px}
  .store-title-row{align-items:flex-start;flex-direction:column}.get-app{font-size:11px;padding:10px 14px}
  .category-strip{padding-bottom:18px;overflow-x:auto;flex-wrap:nowrap}.category{white-space:nowrap;flex:0 0 auto}
- .apps-grid{grid-template-columns:1fr;gap:9px}
+ /* Two-column mobile app layout */
+.apps-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+    gap: 10px !important;
+}
+
+.app-card {
+    display: flex !important;
+    flex-direction: column !important;
+    align-items: flex-start !important;
+    min-width: 0;
+    min-height: 165px;
+    padding: 12px 10px !important;
+}
+
+.app-icon {
+    width: 56px !important;
+    height: 56px !important;
+    margin: 0 0 9px !important;
+}
+
+.app-name {
+    width: 100%;
+    font-size: 12px !important;
+    line-height: 1.35;
+}
+
+.app-developer {
+    width: 100%;
+    font-size: 10px !important;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.app-meta {
+    width: 100%;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    font-size: 9px !important;
+    margin-top: 8px;
+}
  .app-card{min-height:100px;padding:13px 12px;grid-template-columns:58px minmax(0,1fr);column-gap:12px}
  .app-icon{width:58px;height:58px;border-radius:13px}.app-name{font-size:13px}.app-developer{font-size:11px}.app-meta{font-size:10px}
  .feature-main{padding:22px}.feature-main h2{font-size:25px}.feature-side{min-height:175px}.info-row{grid-template-columns:1fr}
@@ -2887,11 +3138,293 @@ main{max-width:none;margin:0 0 0 232px;padding:0 36px}.store-head{padding:32px 0
 @media(max-width:600px){.mobile-bottom-nav{left:10px;right:10px;bottom:calc(9px + env(safe-area-inset-bottom));padding:6px 6px calc(6px + env(safe-area-inset-bottom));border-radius:23px}.mobile-bottom-nav .bottom-nav-link{border-radius:18px}.sidebar-brand{margin-bottom:18px}}
 </style>
 
+
+<style id="appexio-responsive-sidebar-refresh">
+/* ==========================================================
+   APPEXIO RESPONSIVE NAVIGATION REFRESH
+   Desktop: compact icon rail expands on hover/focus.
+   Touch: edge arrow opens a slide-in drawer.
+========================================================== */
+
+/* Desktop / laptop: keep the sidebar compact until hovered. */
+@media (min-width: 851px) {
+  .store-sidebar {
+    position: fixed !important;
+    top: 76px !important;
+    bottom: 0 !important;
+    left: 0 !important;
+    width: 74px !important;
+    padding: 19px 8px 24px !important;
+    overflow-x: hidden !important;
+    overflow-y: auto !important;
+    z-index: 110 !important;
+    border-right: 1px solid rgba(180,196,230,.13) !important;
+    background: rgba(12,17,27,.97) !important;
+    box-shadow: 8px 0 28px rgba(0,0,0,.14);
+    transition: width .24s cubic-bezier(.2,.75,.25,1), box-shadow .24s ease !important;
+    scrollbar-width: thin;
+  }
+  .store-sidebar:hover,
+  .store-sidebar:focus-within {
+    width: 248px !important;
+    box-shadow: 18px 0 42px rgba(0,0,0,.34) !important;
+  }
+  .store-sidebar .sidebar-brand { display: none !important; }
+  .store-sidebar .sidebar-link {
+    min-height: 49px !important;
+    width: 100% !important;
+    margin: 4px 0 !important;
+    padding: 0 !important;
+    justify-content: center !important;
+    gap: 0 !important;
+    border-radius: 15px !important;
+    white-space: nowrap !important;
+    overflow: hidden !important;
+    transition: background .18s ease, color .18s ease, padding .18s ease !important;
+  }
+  .store-sidebar .sidebar-link i {
+    flex: 0 0 22px !important;
+    width: 22px !important;
+    margin: 0 !important;
+    font-size: 18px !important;
+    text-align: center !important;
+  }
+  .store-sidebar .sidebar-link span,
+  .store-sidebar .sidebar-caption { display: none !important; }
+  .store-sidebar .sidebar-divider { margin: 14px 9px !important; }
+
+  .store-sidebar:hover .sidebar-link,
+  .store-sidebar:focus-within .sidebar-link {
+    justify-content: flex-start !important;
+    gap: 15px !important;
+    padding: 0 15px !important;
+  }
+  .store-sidebar:hover .sidebar-link span,
+  .store-sidebar:focus-within .sidebar-link span {
+    display: inline !important;
+    opacity: 1 !important;
+  }
+  .store-sidebar:hover .sidebar-caption,
+  .store-sidebar:focus-within .sidebar-caption { display: block !important; }
+  .store-sidebar:hover .sidebar-divider,
+  .store-sidebar:focus-within .sidebar-divider { margin: 16px 10px !important; }
+
+  /* Let the page use the width released by the compact rail. */
+  main {
+    width: auto !important;
+    max-width: none !important;
+    margin-left: 74px !important;
+    padding-left: 30px !important;
+    padding-right: 30px !important;
+  }
+  .footer-inner,
+  .developer-credit {
+    margin-left: 74px !important;
+  }
+  .footer-inner { padding-left: 30px !important; padding-right: 30px !important; }
+
+  /* Four clear cards per row on ordinary desktop screens. */
+  #gamesGrid.apps-grid,
+  .apps-grid {
+    grid-template-columns: repeat(4, minmax(0, 1fr)) !important;
+    gap: 15px !important;
+  }
+
+  /* The mobile drawer control is not part of the desktop layout. */
+  .mobile-menu { display: none !important; }
+}
+
+/* Extra-wide monitors get slightly roomier cards without changing the 4-up rhythm. */
+@media (min-width: 1500px) {
+  main { padding-left: 40px !important; padding-right: 40px !important; }
+  #gamesGrid.apps-grid, .apps-grid { gap: 18px !important; }
+}
+
+/* Touch screens: hide the old hamburger and use the edge arrow as the drawer handle. */
+@media (max-width: 850px), (hover: none), (pointer: coarse) {
+  .mobile-menu {
+    display: grid !important;
+    position: fixed !important;
+    left: 0 !important;
+    top: 50% !important;
+    z-index: 153 !important;
+    width: 34px !important;
+    height: 68px !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    place-items: center !important;
+    transform: translateY(-50%) !important;
+    border: 1px solid rgba(190,202,232,.2) !important;
+    border-left: 0 !important;
+    border-radius: 0 15px 15px 0 !important;
+    background: rgba(18,25,39,.96) !important;
+    color: #f5f7ff !important;
+    box-shadow: 8px 5px 24px rgba(0,0,0,.32) !important;
+    font-size: 15px !important;
+    cursor: pointer !important;
+    transition: left .25s ease, background .2s ease, border-radius .2s ease !important;
+  }
+  body.sidebar-open .mobile-menu {
+    left: min(300px, 84vw) !important;
+    border-left: 1px solid rgba(190,202,232,.2) !important;
+    border-radius: 0 14px 14px 0 !important;
+  }
+  .mobile-menu:hover { background: #222d43 !important; }
+
+  /* The arrow handle is fixed to the screen edge, so remove its old header grid cell. */
+  .nav {
+    grid-template-columns: auto minmax(0, 1fr) !important;
+    grid-template-rows: auto auto !important;
+  }
+  .logo { grid-column: 1 !important; grid-row: 1 !important; }
+  .archive-upload-btn { grid-column: 2 !important; grid-row: 1 !important; justify-self: end !important; }
+  .search-wrapper { grid-column: 1 / -1 !important; grid-row: 2 !important; }
+
+  .store-sidebar {
+    position: fixed !important;
+    z-index: 151 !important;
+    top: 0 !important;
+    bottom: 0 !important;
+    left: 0 !important;
+    width: min(300px, 84vw) !important;
+    padding: 24px 14px calc(24px + env(safe-area-inset-bottom)) !important;
+    overflow-x: hidden !important;
+    overflow-y: auto !important;
+    background: rgba(12,17,27,.985) !important;
+    border-right: 1px solid rgba(190,202,232,.17) !important;
+    box-shadow: 18px 0 48px rgba(0,0,0,.42) !important;
+    transform: translateX(-105%) !important;
+    visibility: hidden !important;
+    transition: transform .26s cubic-bezier(.2,.75,.25,1), visibility .26s ease !important;
+  }
+  body.sidebar-open .store-sidebar {
+    transform: translateX(0) !important;
+    visibility: visible !important;
+  }
+  .store-sidebar .sidebar-brand {
+    display: flex !important;
+    align-items: center !important;
+    gap: 11px !important;
+    margin: 0 5px 22px !important;
+    padding: 4px 10px 17px !important;
+    border-bottom: 1px solid rgba(190,202,232,.14) !important;
+    color: #f5f7ff !important;
+    font-size: 18px !important;
+    font-weight: 800 !important;
+  }
+  .store-sidebar .sidebar-brand > img { width: 40px !important; height: 40px !important; }
+  .store-sidebar .sidebar-link {
+    display: flex !important;
+    justify-content: flex-start !important;
+    align-items: center !important;
+    gap: 15px !important;
+    min-height: 49px !important;
+    width: 100% !important;
+    padding: 0 16px !important;
+    margin: 4px 0 !important;
+    border-radius: 14px !important;
+    color: #c3ccdc !important;
+    white-space: nowrap !important;
+  }
+  .store-sidebar .sidebar-link span,
+  .store-sidebar .sidebar-caption { display: inline !important; }
+  .store-sidebar .sidebar-link i { width: 21px !important; flex: 0 0 21px !important; text-align: center !important; }
+  .store-sidebar .sidebar-divider { margin: 16px 10px !important; background: rgba(190,202,232,.14) !important; }
+  .store-sidebar .sidebar-caption { padding: 0 16px 8px !important; color: #8290a8 !important; }
+
+  .sidebar-overlay {
+    position: fixed !important;
+    z-index: 150 !important;
+    inset: 0 !important;
+    background: rgba(2,5,12,.68) !important;
+    backdrop-filter: blur(3px);
+    opacity: 0 !important;
+    visibility: hidden !important;
+    pointer-events: none !important;
+    transition: opacity .22s ease, visibility .22s ease !important;
+  }
+  body.sidebar-open .sidebar-overlay {
+    opacity: 1 !important;
+    visibility: visible !important;
+    pointer-events: auto !important;
+  }
+
+  main { width: 100% !important; max-width: none !important; margin: 0 !important; min-width: 0 !important; }
+  .footer-inner, .developer-credit { margin-left: 0 !important; }
+}
+
+/* Phone app rows: polished Play Store-like listing cards with comfortable tap targets. */
+@media (max-width: 600px) {
+  .header { width: 100% !important; }
+  .nav {
+    display: grid !important;
+    grid-template-columns: auto minmax(0, 1fr) !important;
+    grid-template-rows: auto auto !important;
+    min-height: 66px !important;
+    padding: 9px 12px 9px 38px !important;
+    gap: 8px 9px !important;
+  }
+  .logo { min-width: 0 !important; grid-column: 1 !important; grid-row: 1 !important; font-size: 15px !important; }
+  .logo-icon { width: 32px !important; height: 32px !important; }
+  .archive-upload-btn { grid-column: 2 !important; grid-row: 1 !important; justify-self: end !important; }
+  .search-wrapper { grid-column: 1 / -1 !important; grid-row: 2 !important; min-width: 0 !important; width: 100% !important; }
+  .nav-search { width: 100% !important; min-width: 0 !important; height: 41px !important; padding: 0 11px !important; }
+  .nav-search input { min-width: 0 !important; font-size: 11px !important; }
+
+  #gamesGrid.apps-grid,
+  .apps-grid { grid-template-columns: minmax(0, 1fr) !important; gap: 11px !important; }
+  .app-card {
+    display: grid !important;
+    grid-template-columns: 62px minmax(0, 1fr) !important;
+    grid-template-rows: auto auto auto !important;
+    align-content: center !important;
+    align-items: center !important;
+    min-height: 100px !important;
+    padding: 13px 14px !important;
+    column-gap: 14px !important;
+    row-gap: 4px !important;
+    border-radius: 17px !important;
+    border: 1px solid rgba(180,196,230,.14) !important;
+    background: linear-gradient(145deg, rgba(22,30,46,.98), rgba(13,19,31,.98)) !important;
+    box-shadow: 0 6px 18px rgba(0,0,0,.14) !important;
+  }
+  .app-card:active {
+    border-color: rgba(155,123,255,.58) !important;
+    background: linear-gradient(145deg, #202a40, #121b2c) !important;
+  }
+  .app-icon {
+    grid-column: 1 !important;
+    grid-row: 1 / 4 !important;
+    align-self: center !important;
+    width: 62px !important;
+    height: 62px !important;
+    margin: 0 !important;
+    border-radius: 15px !important;
+    box-shadow: 0 5px 15px rgba(0,0,0,.2) !important;
+  }
+  .app-name { grid-column: 2 !important; grid-row: 1 !important; align-self: end !important; font-size: 13px !important; line-height: 1.35 !important; }
+  .app-developer { grid-column: 2 !important; grid-row: 2 !important; align-self: center !important; margin-top: 0 !important; font-size: 10px !important; }
+  .app-meta { grid-column: 2 !important; grid-row: 3 !important; align-self: start !important; margin-top: 2px !important; gap: 8px !important; font-size: 10px !important; }
+  .app-source-badge { grid-column: 2 !important; grid-row: 4 !important; }
+  .verified { top: 8px !important; right: 8px !important; width: 19px !important; height: 19px !important; }
+  .app-hover-preview { display: none !important; }
+}
+
+@media (max-width: 380px) {
+  .nav { padding-right: 8px !important; padding-left: 36px !important; gap: 7px !important; }
+  .logo { font-size: 13px !important; gap: 5px !important; }
+  .logo-icon { width: 28px !important; height: 28px !important; }
+  .nav-search input { font-size: 10px !important; }
+  .app-card { grid-template-columns: 56px minmax(0,1fr) !important; min-height: 94px !important; padding: 11px !important; column-gap: 11px !important; }
+  .app-icon { width: 56px !important; height: 56px !important; }
+}
+</style>
+
 </head>
 <body>
 <header class="header"><nav class="nav">
 <a href="index.html" class="logo"><div class="logo-icon"><img src="favicon.png" alt="AppExio"></div>APP<span>EXIO</span></a>
-<div class="nav-links"><a href="#" class="active">Discover</a></div>
+
 <div class="search-wrapper"><div class="nav-search"><i class="fa-solid fa-magnifying-glass"></i><input id="searchInput" type="text" placeholder="Search apps, games & software..."></div></div>
 <a href="user-console-jdcbuydbcduiebceuif9wbcephpppepdwejnwdicijwbedijcnwjenoi.html" class="archive-upload-btn">
     <i class="fa-solid fa-upload"></i>
@@ -3019,37 +3552,86 @@ main{max-width:none;margin:0 0 0 232px;padding:0 36px}.store-head{padding:32px 0
 </script>
 
 <script>
-(function(){
- const menu=document.querySelector('.mobile-menu'),overlay=document.querySelector('.sidebar-overlay');
- const bottomLinks=[...document.querySelectorAll('.bottom-nav-link')];
- const sidebarLinks=[...document.querySelectorAll('.store-sidebar .sidebar-link[data-catalog-view]')];
- function setDrawer(open){
-  document.body.classList.toggle('sidebar-open',open);
-  if(menu){menu.setAttribute('aria-expanded',String(open));menu.setAttribute('aria-label',open?'Close menu':'Open menu');menu.innerHTML=open?'<i class="fa-solid fa-xmark"></i>':'<i class="fa-solid fa-bars"></i>';}
- }
- menu?.addEventListener('click',()=>setDrawer(!document.body.classList.contains('sidebar-open')));
- overlay?.addEventListener('click',()=>setDrawer(false));
- document.addEventListener('keydown',e=>{if(e.key==='Escape')setDrawer(false)});
- function syncActive(){
-  const selected=document.querySelector('.store-sidebar .sidebar-link.selected[data-catalog-view]');
-  const view=selected?.dataset.catalogView||'for-you';
-  bottomLinks.forEach(link=>{const active=link.dataset.catalogView===view;link.classList.toggle('selected',active);if(active)link.setAttribute('aria-current','page');else link.removeAttribute('aria-current');});
- }
- bottomLinks.forEach(link=>link.addEventListener('click',event=>{
-  event.preventDefault();
-  const view=link.dataset.catalogView;
-  const matchingSidebarLink=sidebarLinks.find(sidebarLink=>sidebarLink.dataset.catalogView===view);
-  if(matchingSidebarLink){
-   matchingSidebarLink.click(); // Reuse the original catalog navigation so filtering works exactly as it does from the left menu.
+(function () {
+  const menu = document.querySelector('.mobile-menu');
+  const overlay = document.querySelector('.sidebar-overlay');
+  const bottomLinks = [...document.querySelectorAll('.bottom-nav-link')];
+  const sidebarLinks = [...document.querySelectorAll('.store-sidebar .sidebar-link[data-catalog-view]')];
+  const isTouchLayout = () => window.matchMedia('(max-width: 850px), (hover: none), (pointer: coarse)').matches;
+
+  function setDrawer(open) {
+    document.body.classList.toggle('sidebar-open', open);
+    if (menu) {
+      menu.setAttribute('aria-expanded', String(open));
+      menu.setAttribute('aria-label', open ? 'Close navigation' : 'Open navigation');
+      menu.innerHTML = open
+        ? '<i class="fa-solid fa-chevron-left" aria-hidden="true"></i>'
+        : '<i class="fa-solid fa-chevron-right" aria-hidden="true"></i>';
+    }
   }
+
+  menu?.addEventListener('click', () => {
+    if (!isTouchLayout()) return;
+    setDrawer(!document.body.classList.contains('sidebar-open'));
+  });
+  overlay?.addEventListener('click', () => setDrawer(false));
+  document.addEventListener('keydown', event => {
+    if (event.key === 'Escape') setDrawer(false);
+  });
+
+  // Edge-swipe gesture: swipe right from the left edge to open; swipe left to close.
+  let touchStartX = 0;
+  let touchStartY = 0;
+  let trackingEdgeSwipe = false;
+  document.addEventListener('touchstart', event => {
+    if (!isTouchLayout() || !event.touches || !event.touches.length) return;
+    const touch = event.touches[0];
+    touchStartX = touch.clientX;
+    touchStartY = touch.clientY;
+    trackingEdgeSwipe = document.body.classList.contains('sidebar-open') || touchStartX <= 26;
+  }, { passive: true });
+
+  document.addEventListener('touchend', event => {
+    if (!trackingEdgeSwipe || !event.changedTouches || !event.changedTouches.length) return;
+    const touch = event.changedTouches[0];
+    const deltaX = touch.clientX - touchStartX;
+    const deltaY = touch.clientY - touchStartY;
+    trackingEdgeSwipe = false;
+    if (Math.abs(deltaX) < 65 || Math.abs(deltaX) < Math.abs(deltaY) * 1.25) return;
+
+    const isOpen = document.body.classList.contains('sidebar-open');
+    if (!isOpen && touchStartX <= 26 && deltaX > 0) setDrawer(true);
+    else if (isOpen && deltaX < 0) setDrawer(false);
+  }, { passive: true });
+
+  function syncActive() {
+    const selected = document.querySelector('.store-sidebar .sidebar-link.selected[data-catalog-view]');
+    const view = selected?.dataset.catalogView || 'for-you';
+    bottomLinks.forEach(link => {
+      const active = link.dataset.catalogView === view;
+      link.classList.toggle('selected', active);
+      if (active) link.setAttribute('aria-current', 'page');
+      else link.removeAttribute('aria-current');
+    });
+  }
+
+  bottomLinks.forEach(link => link.addEventListener('click', event => {
+    event.preventDefault();
+    const view = link.dataset.catalogView;
+    const matchingSidebarLink = sidebarLinks.find(sidebarLink => sidebarLink.dataset.catalogView === view);
+    if (matchingSidebarLink) matchingSidebarLink.click();
+    setDrawer(false);
+    setTimeout(syncActive, 0);
+  }));
+  sidebarLinks.forEach(link => link.addEventListener('click', () => setDrawer(false)));
+  document.querySelectorAll('.store-sidebar .sidebar-link:not([data-catalog-view])').forEach(link => {
+    link.addEventListener('click', () => setDrawer(false));
+  });
+
+  const observer = new MutationObserver(syncActive);
+  sidebarLinks.forEach(link => observer.observe(link, { attributes: true, attributeFilter: ['class', 'aria-current'] }));
   setDrawer(false);
-  setTimeout(syncActive,0);
- }));
- sidebarLinks.forEach(link=>link.addEventListener('click',()=>setDrawer(false)));
- document.querySelectorAll('.store-sidebar .sidebar-link:not([data-catalog-view])').forEach(link=>link.addEventListener('click',()=>setDrawer(false)));
- const observer=new MutationObserver(syncActive);
- sidebarLinks.forEach(link=>observer.observe(link,{attributes:true,attributeFilter:['class','aria-current']}));
- syncActive();
+  syncActive();
 })();
 </script>
 <footer class="developer-credit"><p>Designed & Developed by <strong><a href="https://appexiodev.github.io">
@@ -3080,6 +3662,204 @@ body.details-open,body.explore-page-open{overflow:hidden}.details-close span{dis
 @media(max-width:1050px){.ae-explore-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.ae-product-content{grid-template-columns:minmax(0,1fr) 260px;gap:28px}.ae-product-hero{grid-template-columns:minmax(0,1fr) 240px}}
 @media(max-width:760px){.ae-product-topbar{height:62px;padding:0 15px}.ae-product-toplabel{display:none}.ae-product-main{padding:0 14px 36px}.ae-product-hero{grid-template-columns:1fr;gap:22px;margin-top:14px;padding:23px 18px;border-radius:20px}.ae-product-identity{align-items:flex-start;gap:15px}.ae-product-identity .details-icon{width:76px;height:76px;border-radius:18px}.ae-product-kicker{font-size:8px;margin-bottom:7px}.details-title h1{font-size:25px;letter-spacing:-.8px}.details-developer{font-size:11px;margin-bottom:10px}.details-badges{gap:5px}.details-badge{padding:6px 8px;font-size:9px}.details-download{width:100%;min-height:48px}.ae-product-content{display:flex;flex-direction:column;gap:22px;padding:23px 2px 0}.ae-product-stats{gap:7px;margin-bottom:27px}.ae-product-stats .details-stat{padding:12px 9px;border-radius:12px}.details-stat strong{font-size:11px}.details-stat span{font-size:8px}.ae-section-heading h2{font-size:17px}.details-section p{font-size:12px}.ae-product-aside{order:3}.ae-aside-card{position:static;padding:17px}.ae-screenshots-section{order:4}.details-screenshots{grid-template-columns:1fr 1fr;gap:8px}.details-screenshots img{height:auto;aspect-ratio:4/5;border-radius:12px}.ae-product-footer{flex-direction:column;padding:18px 16px;gap:8px}.ae-explore-page{padding:0 14px 35px}.ae-explore-bar{grid-template-columns:1fr auto;gap:12px;padding:16px 0}.ae-explore-brand{grid-column:1;grid-row:1}.ae-explore-heading{grid-column:1/-1;grid-row:2}.ae-explore-heading h1{font-size:25px}.ae-explore-heading p{font-size:11px}.ae-explore-close{grid-column:2;grid-row:1;padding:0 11px}.ae-explore-close span{display:none}.ae-explore-controls{margin:17px auto 12px;align-items:flex-start;flex-direction:column;gap:10px}.ae-explore-searchbox{width:100%;height:48px}.ae-explore-count{font-size:11px}.ae-explore-filters{margin-bottom:9px}.ae-explore-grid{grid-template-columns:1fr;gap:9px}.ae-explore-grid .app-card{min-height:100px;grid-template-columns:60px minmax(0,1fr);column-gap:12px;padding:12px}.ae-explore-grid .app-icon{width:60px;height:60px;border-radius:14px}.ae-explore-grid .app-name{font-size:12px}.ae-explore-grid .app-developer{font-size:10px}.ae-explore-grid .app-meta{font-size:9px}}
 @media(min-width:761px) and (max-width:1050px){.ae-product-content{grid-template-columns:1fr}.ae-product-aside{grid-column:1;grid-row:auto}.ae-aside-card{position:static}.ae-screenshots-section{grid-column:1}}
+</style>
+
+
+
+<style id="appexio-dark-market-refresh">
+/* AppExio dark marketplace skin, based on the supplied graphite/black reference. */
+:root{
+  color-scheme:dark;
+  --bg:#0b0b0d;
+  --surface:#151518;
+  --surface2:#1d1d21;
+  --line:rgba(255,255,255,.12);
+  --text:#f5f5f6;
+  --muted:#a0a0a8;
+  --brand:#ee4654;
+  --brand2:#b83248;
+  --green:#78d7a0;
+  --ae-accent:#f04a59;
+  --ae-accent-soft:rgba(240,74,89,.13);
+  --ae-ink:#f3f3f5;
+  --ae-muted:#a3a3ad;
+  --ae-border:rgba(255,255,255,.12);
+}
+html{background:#0b0b0d;color-scheme:dark}
+body{background:#0b0b0d!important;color:#f3f3f5!important;padding-bottom:30px}
+.header{background:rgba(10,10,12,.94)!important;border-bottom:1px solid rgba(255,255,255,.1)!important;box-shadow:0 8px 30px rgba(0,0,0,.2)}
+.logo,.footer-brand .logo{color:#f5f5f6!important}.logo span{color:#f04a59!important}.logo-icon{background:#19191d!important;border:1px solid rgba(255,255,255,.11)}
+.nav-links a:not(.admin-lock){color:#a6a6ae!important}.nav-links a.active,.nav-links a:hover{background:rgba(255,255,255,.08)!important;color:#fff!important}
+.archive-upload-btn{display:inline-flex!important;align-items:center;justify-content:center;gap:8px;padding:10px 13px!important;border:1px solid #ed4654!important;border-radius:10px!important;background:linear-gradient(135deg,#ed4654,#b83248)!important;color:#fff!important;font-size:12px!important;font-weight:750!important}.archive-upload-btn i,.archive-upload-btn span{color:#fff!important}.archive-upload-btn:hover{background:linear-gradient(135deg,#f45a67,#cf354b)!important;color:#fff!important}
+.admin-lock{border-color:rgba(255,255,255,.14)!important;color:#c5c5cc!important}
+.nav-search{background:#19191e!important;border-color:rgba(255,255,255,.1)!important}.nav-search:focus-within{background:#202026!important;border-color:rgba(240,74,89,.62)!important;box-shadow:0 0 0 4px rgba(240,74,89,.11)!important}.nav-search input{color:#fff!important}.nav-search input::placeholder,.nav-search i{color:#85858e!important}
+.store-sidebar{background:#101013!important;border-right:1px solid rgba(255,255,255,.09)!important}.sidebar-link{color:#b5b5bd!important}.sidebar-link i{color:#92929b!important}.sidebar-link:hover,.sidebar-link.selected{background:rgba(240,74,89,.14)!important;color:#fff!important}.sidebar-link.selected i{color:#ff6975!important}.sidebar-divider{background:rgba(255,255,255,.1)!important}.sidebar-caption{color:#777780!important}.sidebar-brand{color:#f5f5f6!important;border-color:rgba(255,255,255,.1)!important}.sidebar-brand-accent{color:#f04a59!important}
+main{color:#f3f3f5!important}.store-head{padding-top:34px}.eyebrow{color:#f05a67!important}.store-title{color:#f5f5f6!important}.store-title span{color:#f05a67!important}.store-sub{color:#a0a0a8!important}.get-app{background:linear-gradient(135deg,#ed4654,#b83248)!important;color:#fff!important;border-radius:11px!important}
+.category-strip{padding-bottom:23px}.category{background:#17171b!important;border-color:rgba(255,255,255,.13)!important;color:#b5b5bd!important;border-radius:8px!important}.category:hover,.category.active{background:rgba(240,74,89,.14)!important;border-color:rgba(240,74,89,.55)!important;color:#fff!important}
+.section-title h2{color:#f4f4f6!important}.section-title p{color:#92929b!important}.view-all{color:#ff6875!important}.auto-catalog-status,.catalog-note{color:#9999a2!important}.auto-catalog-status{background:rgba(255,255,255,.035)!important;border-color:rgba(255,255,255,.1)!important}
+.feature-main,.feature-side{border-color:rgba(255,255,255,.11)!important;box-shadow:0 12px 35px rgba(0,0,0,.18)}.feature-main{background:linear-gradient(120deg,#28141a,#17171d 75%)!important}.feature-main:after{background:radial-gradient(circle,rgba(240,74,89,.2),transparent 67%)!important}.feature-label{color:#ff9aa2!important}.feature-main h2,.feature-side h3{color:#f7f7f8!important}.feature-main p,.feature-side p{color:#b0b0b8!important}.feature-main a{background:#f0f0f2!important;color:#151518!important}.feature-side{background:linear-gradient(145deg,#181a1d,#111214)!important}.feature-side .side-icon{color:#f04a59!important}
+.apps-grid{overflow:visible!important}.app-card,.ae-explore-grid .app-card{position:relative;isolation:auto;overflow:visible!important;cursor:pointer;min-width:0;background:linear-gradient(145deg,#17171b,#121215)!important;border:1px solid rgba(255,255,255,.105)!important;border-radius:15px!important;box-shadow:0 5px 18px rgba(0,0,0,.18)!important;color:#f4f4f5!important;transition:transform .2s ease,border-color .2s ease,box-shadow .2s ease,background .2s ease!important}
+.app-card:hover,.app-card:focus-within{z-index:80;background:#1b1b20!important;border-color:rgba(240,74,89,.42)!important;box-shadow:0 13px 32px rgba(0,0,0,.34)!important;transform:translateY(-2px)!important}
+.app-icon{background:#222228!important;border:1px solid rgba(255,255,255,.07)}.app-name{color:#f4f4f6!important}.app-developer{color:#a2a2ab!important}.app-meta{color:#9c9ca5!important}.rating{color:#e6e6eb!important}.rating i{color:#f0bc58!important}.downloads{border-color:rgba(255,255,255,.16)!important}.verified{background:#6fd59a!important;color:#08130d!important}.app-source-badge{background:rgba(240,74,89,.12)!important;border:1px solid rgba(240,74,89,.22)!important;color:#ff8c96!important}.loading-state,.empty-state{color:#a5a5ad!important}.empty-state h3{color:#f5f5f6!important}
+.info-card{background:#151518!important;border-color:rgba(255,255,255,.1)!important}.info-card h3{color:#f3f3f5!important}.info-card p{color:#a1a1aa!important}.info-card i{color:#f05a67!important}
+footer{background:#0d0d10!important;border-top-color:rgba(255,255,255,.1)!important}.footer-inner{background:transparent!important}.footer-brand p,.footer-column a{color:#9999a2!important}.footer-column h4{color:#f2f2f4!important}.footer-column a:hover{color:#ff7b85!important}.copyright{border-color:rgba(255,255,255,.1)!important;color:#777780!important}.developer-credit{background:#0d0d10!important;color:#777780!important}.developer-credit strong{color:#f05a67!important}
+.mobile-menu{background:#19191e!important;border-color:rgba(255,255,255,.14)!important;color:#f4f4f5!important}.nav-links.mobile-open{background:#101013!important;border-color:rgba(255,255,255,.1)!important}.sidebar-overlay{background:rgba(0,0,0,.68)!important}.mobile-bottom-nav{background:rgba(18,18,21,.94)!important;border-color:rgba(255,255,255,.12)!important;box-shadow:0 -7px 28px rgba(0,0,0,.45)!important}.mobile-bottom-nav .bottom-nav-link{color:#a8a8b1!important}.mobile-bottom-nav .bottom-nav-link.selected{background:rgba(240,74,89,.16)!important;color:#ff7882!important}
+
+/* Floating information card. It intentionally sits above neighboring tiles like the reference. */
+.app-hover-preview{position:absolute;left:50%;top:calc(100% + 12px);bottom:auto;width:min(390px,calc(100vw - 28px));z-index:120;display:flex;flex-direction:column;gap:13px;padding:20px 21px 18px;border:1px solid rgba(255,255,255,.72);border-radius:2px;background:linear-gradient(150deg,#19191c 0%,#131316 100%);color:#f5f5f6;box-shadow:0 24px 65px rgba(0,0,0,.72),0 4px 14px rgba(0,0,0,.38);opacity:0;visibility:hidden;pointer-events:none;transform:translateY(11px) scale(.985);transform-origin:top center;transition:opacity .18s ease,transform .18s ease,visibility .18s ease}
+.app-hover-preview.is-visible{opacity:1;visibility:visible;pointer-events:auto;transform:translateY(0) scale(1)}
+.app-hover-preview.is-above{top:auto;bottom:calc(100% + 12px);transform:translateY(-11px) scale(.985);transform-origin:bottom center}.app-hover-preview.is-above.is-visible{transform:translateY(0) scale(1)}
+.app-preview-badge{align-self:flex-start;max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;padding:5px 9px;background:#e91e32;color:#fff;font-size:10px;font-weight:850;letter-spacing:.65px;text-transform:uppercase}
+.app-preview-identity{display:flex;align-items:center;gap:14px;min-width:0}.app-preview-icon{width:58px;height:58px;flex:none;object-fit:cover;border-radius:11px;background:#26262c;border:1px solid rgba(255,255,255,.1)}.app-preview-titlebox{min-width:0}.app-preview-title{display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;color:#fff;font-size:20px;line-height:1.22;font-weight:650;letter-spacing:-.45px}.app-preview-developer{margin-top:5px;color:#94949d;font-size:11px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.app-preview-meta{display:flex;align-items:center;gap:11px;color:#babac1;font-size:11px}.app-preview-meta span{display:inline-flex;align-items:center;gap:5px}.app-preview-meta span:first-child i{color:#e4b852}.app-preview-meta span+span{padding-left:11px;border-left:1px solid rgba(255,255,255,.16)}
+.app-preview-specs{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:7px}.app-preview-spec{min-width:0;display:flex;flex-direction:column;gap:6px;padding:10px 9px;background:rgba(255,255,255,.045);border:1px solid rgba(255,255,255,.075)}.app-preview-spec>span{font-size:8px;line-height:1.2;letter-spacing:.7px;font-weight:800;color:#878790}.app-preview-spec strong{color:#e9e9ed;font-size:10px;line-height:1.35;font-weight:650;overflow-wrap:anywhere;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.app-preview-description{display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden;color:#a0a0a9;font-size:12px;line-height:1.55;min-height:54px}.app-preview-actions{display:flex;gap:9px}.app-hover-download{display:flex;align-items:center;justify-content:center;gap:10px;width:100%;min-height:47px;padding:0 14px;border:1px solid rgba(255,255,255,.84);background:transparent;color:#fff;text-decoration:none;font-size:13px;font-weight:750;transition:background .18s,border-color .18s,color .18s}.app-hover-download:hover{background:#f2f2f4;border-color:#f2f2f4;color:#111114}.app-hover-download .app-preview-external{font-size:10px;margin-left:auto;color:#a4a4ad}.app-hover-download:hover .app-preview-external{color:#55555d}.app-hover-download.is-unavailable{opacity:.58;cursor:not-allowed;border-style:dashed}.app-hover-download.is-unavailable:hover{background:transparent;color:#fff;border-color:rgba(255,255,255,.84)}
+
+/* Full-page product details and Explore view follow the same dark palette. */
+.app-details-modal{background:#09090b!important;color:#f3f3f5!important}.ae-product-page{background:#0d0d10!important;color:#f3f3f5!important}.ae-product-topbar{background:rgba(14,14,17,.94)!important;border-color:rgba(255,255,255,.1)!important}.ae-product-topbar .details-close{background:#1a1a1f!important;border-color:rgba(255,255,255,.15)!important;color:#f0f0f2!important}.ae-product-topbar .details-close:hover{background:rgba(240,74,89,.14)!important;color:#ff7a84!important}.ae-product-brand{color:#f4f4f6!important}.ae-product-toplabel{color:#8f8f98!important}.ae-product-hero{border-color:rgba(255,255,255,.12)!important;background:linear-gradient(115deg,#21151a 0%,#17171b 58%,#121317 100%)!important}.ae-product-orb-one{background:rgba(240,74,89,.12)!important}.ae-product-orb-two{background:rgba(106,126,180,.12)!important}.details-title h1{color:#fff!important}.ae-product-kicker{color:#ff7680!important}.details-developer{color:#a4a4ad!important}.details-badge{background:#222228!important;border-color:rgba(255,255,255,.12)!important;color:#d2d2d8!important}.details-badge.rating{color:#f0c365!important}.details-badge.rating i{color:#f0c365!important}.ae-product-hero-action .details-download{background:linear-gradient(135deg,#ed4654,#b83248)!important;color:#fff!important;box-shadow:0 10px 24px rgba(190,39,58,.25)!important}.ae-safe-note{color:#9999a3!important}.ae-safe-note i{color:#ff707b!important}.ae-product-stats .details-stat{background:#17171b!important;border-color:rgba(255,255,255,.11)!important}.details-stat strong{color:#f3f3f6!important}.details-stat span{color:#92929c!important}.ae-section-heading>span{background:rgba(240,74,89,.14)!important;color:#ff7b85!important}.ae-section-heading h2{color:#f4f4f6!important}.details-section p{color:#aaaab2!important}.details-tags span{background:rgba(240,74,89,.12)!important;color:#ff9aa2!important}.ae-aside-card{background:#17171b!important;border-color:rgba(255,255,255,.12)!important;box-shadow:0 8px 28px rgba(0,0,0,.22)!important}.ae-aside-icon{background:rgba(240,74,89,.14)!important;color:#ff7b85!important}.ae-aside-card h3{color:#f3f3f5!important}.ae-aside-card>p,.ae-aside-line{color:#a8a8b0!important}.ae-aside-line{border-color:rgba(255,255,255,.1)!important}.ae-aside-line i{color:#ff7b85!important}.details-screenshots img{border-color:rgba(255,255,255,.12)!important;background:#18181d!important}.ae-product-footer{background:#101013!important;border-color:rgba(255,255,255,.1)!important;color:#888891!important}
+.ae-explore-page{background:#0b0b0e!important;color:#f2f2f4!important}.ae-explore-bar{border-color:rgba(255,255,255,.1)!important}.ae-explore-brand{color:#f4f4f6!important}.ae-explore-brand span span{color:#f05a67!important}.ae-explore-heading .ae-eyebrow{color:#ff6975!important}.ae-explore-heading h1{color:#f5f5f6!important}.ae-explore-heading p,.ae-explore-status{color:#9999a2!important}.ae-explore-close{background:#19191e!important;border-color:rgba(255,255,255,.14)!important;color:#e5e5e9!important}.ae-explore-close:hover{background:rgba(240,74,89,.15)!important;color:#fff!important}.ae-explore-searchbox{background:#19191e!important;border-color:rgba(255,255,255,.13)!important;box-shadow:none!important}.ae-explore-searchbox i{color:#91919a!important}.ae-explore-searchbox input{color:#f4f4f6!important}.ae-explore-searchbox input::placeholder{color:#7f7f88!important}.ae-explore-count{color:#c2c2c9!important}.ae-explore-filters button{background:#17171b!important;border-color:rgba(255,255,255,.12)!important;color:#b3b3bb!important}.ae-explore-filters button:hover,.ae-explore-filters button.active{background:rgba(240,74,89,.14)!important;border-color:rgba(240,74,89,.45)!important;color:#fff!important}.ae-explore-grid .app-card{background:linear-gradient(145deg,#17171b,#121215)!important;border-color:rgba(255,255,255,.1)!important}.ae-explore-grid .app-name{color:#f4f4f6!important}.ae-explore-grid .app-developer,.ae-explore-grid .app-meta{color:#a3a3ac!important}.ae-explore-grid .app-source-badge{background:rgba(240,74,89,.12)!important;border-color:rgba(240,74,89,.22)!important;color:#ff8c96!important}.ae-explore-grid .empty-state{background:#151518!important;border-color:rgba(255,255,255,.15)!important}.ae-explore-grid .empty-state h3{color:#f5f5f6!important}
+
+@media(hover:hover) and (pointer:fine){.app-card:hover .app-hover-preview,.app-card:focus-within .app-hover-preview{opacity:1;visibility:visible;pointer-events:auto}}
+@media(max-width:850px){.store-sidebar{background:#101013!important}.mobile-bottom-nav{background:rgba(18,18,21,.96)!important}.mobile-bottom-nav .bottom-nav-link{color:#aaaab2!important}.mobile-bottom-nav .bottom-nav-link.selected{background:rgba(240,74,89,.16)!important;color:#ff7b85!important}.sidebar-brand{color:#f5f5f6!important}.sidebar-brand-accent{color:#f05a67!important}}
+@media(max-width:760px){.app-hover-preview{display:none!important}.app-card:hover,.app-card:focus-within{transform:none!important}.app-card{overflow:hidden!important}.ae-product-page,.ae-explore-page{background:#0d0d10!important}.ae-product-hero{padding:22px 18px!important}.ae-product-content{color:#eee}.ae-explore-grid .app-card{overflow:hidden!important}}
+@media(prefers-reduced-motion:reduce){.app-hover-preview,.app-card{transition:none!important}}
+</style>
+
+
+<style id="appexio-compact-side-hover-fixes">
+/* Keep the document within the viewport; no horizontal page scrolling. */
+html, body {
+  width: 100%;
+  max-width: 100%;
+  overflow-x: hidden !important;
+}
+body { min-width: 0 !important; }
+.header, .nav, main, .footer-inner { max-width: 100%; }
+.nav { min-width: 0; }
+.search-wrapper, .nav-search { min-width: 0; }
+
+/* Upload is an understated icon + label, not a filled button. */
+.archive-upload-btn,
+.archive-upload-btn:visited {
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  gap: 7px !important;
+  padding: 7px 4px !important;
+  margin: 0 !important;
+  border: 0 !important;
+  border-radius: 0 !important;
+  outline: 0 !important;
+  background: transparent !important;
+  box-shadow: none !important;
+  color: #ff7882 !important;
+  font-size: 12px !important;
+  font-weight: 750 !important;
+  line-height: 1.2 !important;
+  text-decoration: none !important;
+  white-space: nowrap !important;
+  flex: 0 0 auto !important;
+  transform: none !important;
+}
+.archive-upload-btn i,
+.archive-upload-btn span { color: #ff7882 !important; }
+.archive-upload-btn i { font-size: 16px !important; }
+.archive-upload-btn:hover,
+.archive-upload-btn:focus-visible {
+  background: transparent !important;
+  box-shadow: none !important;
+  color: #fff !important;
+  opacity: .82;
+}
+.archive-upload-btn:hover i,
+.archive-upload-btn:hover span { color: #fff !important; }
+
+/* Compact information panel to the right of the hovered app. */
+.app-hover-preview {
+  position: fixed !important;
+  left: 0;
+  top: 0;
+  width: min(330px, calc(100vw - 24px)) !important;
+  max-height: calc(100vh - 24px) !important;
+  overflow: auto !important;
+  overscroll-behavior: contain;
+  z-index: 2147483000 !important;
+  gap: 9px !important;
+  padding: 14px 15px 13px !important;
+  border: 1px solid rgba(255,255,255,.78) !important;
+  border-radius: 2px !important;
+  background: linear-gradient(150deg, #19191c 0%, #131316 100%) !important;
+  color: #f5f5f6 !important;
+  box-shadow: 0 18px 48px rgba(0,0,0,.68), 0 3px 12px rgba(0,0,0,.38) !important;
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
+  transform: translateX(8px) scale(.985);
+  transform-origin: left center;
+  transition: opacity .16s ease, transform .16s ease, visibility .16s ease;
+}
+.app-hover-preview.is-left {
+  transform: translateX(-8px) scale(.985);
+  transform-origin: right center;
+}
+.app-hover-preview.is-visible {
+  opacity: 1 !important;
+  visibility: visible !important;
+  pointer-events: auto !important;
+  transform: translateX(0) scale(1) !important;
+}
+.app-preview-badge {
+  padding: 4px 8px !important;
+  font-size: 9px !important;
+  letter-spacing: .55px !important;
+}
+.app-preview-identity { gap: 10px !important; }
+.app-preview-icon {
+  width: 46px !important;
+  height: 46px !important;
+  border-radius: 9px !important;
+}
+.app-preview-title {
+  font-size: 16px !important;
+  line-height: 1.2 !important;
+  letter-spacing: -.25px !important;
+}
+.app-preview-developer { margin-top: 3px !important; font-size: 10px !important; }
+.app-preview-meta { gap: 9px !important; font-size: 10px !important; }
+.app-preview-meta span + span { padding-left: 9px !important; }
+.app-preview-specs { gap: 6px !important; }
+.app-preview-spec { gap: 4px !important; padding: 7px 7px !important; }
+.app-preview-spec > span { font-size: 7px !important; letter-spacing: .5px !important; }
+.app-preview-spec strong { font-size: 9px !important; line-height: 1.3 !important; }
+.app-preview-description {
+  -webkit-line-clamp: 2 !important;
+  font-size: 10.5px !important;
+  line-height: 1.45 !important;
+  min-height: 0 !important;
+}
+.app-preview-actions { gap: 7px !important; }
+.app-hover-download {
+  min-height: 38px !important;
+  padding: 0 11px !important;
+  gap: 8px !important;
+  font-size: 11px !important;
+}
+.app-hover-download .app-preview-external { font-size: 9px !important; }
+
+/* A hover panel is desktop-only; touch users still open the regular detail page. */
+@media (max-width: 760px), (hover: none), (pointer: coarse) {
+  .app-hover-preview { display: none !important; }
+  .archive-upload-btn { padding: 6px 2px !important; gap: 4px !important; font-size: 10px !important; transform: none !important; }
+  .archive-upload-btn i { font-size: 14px !important; }
+}
+@media (max-width: 600px) {
+  .nav { gap: 6px !important; }
+  .search-wrapper { flex: 1 1 auto !important; }
+  .nav-search { width: 100% !important; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .app-hover-preview { transition: none !important; }
+}
 </style>
 
 </body></html>
