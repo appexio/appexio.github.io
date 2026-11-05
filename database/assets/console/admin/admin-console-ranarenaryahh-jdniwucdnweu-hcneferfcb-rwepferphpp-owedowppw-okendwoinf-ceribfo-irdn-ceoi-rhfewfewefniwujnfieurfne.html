@@ -1904,6 +1904,22 @@ App Picture
 <div class="field full">
 
 <label>
+Details Page Background Image URL
+<span>Optional · shown as the large wallpaper on this app’s details page</span>
+</label>
+
+<input
+    id="detailsBackground"
+    type="url"
+    placeholder="https://example.com/images/app-background.jpg"
+>
+
+</div>
+
+
+<div class="field full">
+
+<label>
 APK File
 </label>
 
@@ -3040,6 +3056,11 @@ function editApp(id) {
     );
 
     setValue(
+        "detailsBackground",
+        app.detailsBackground || ""
+    );
+
+    setValue(
         "apk",
         app.apk
     );
@@ -3304,6 +3325,9 @@ function collectFormData() {
         icon:
             get("icon"),
 
+        detailsBackground:
+            get("detailsBackground"),
+
         apk:
             get("apk"),
 
@@ -3512,7 +3536,7 @@ function clearForm(confirmFirst = true) {
 
     document
         .querySelectorAll(
-            "#formManagement input[type='text'], #formManagement input[type='number'], #formManagement textarea"
+            "#formManagement input[type='text'], #formManagement input[type='url'], #formManagement input[type='number'], #formManagement textarea"
         )
         .forEach(
             element => {
