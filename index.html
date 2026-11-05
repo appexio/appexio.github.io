@@ -280,6 +280,9 @@
                             homepage:
                                 data.homepage || data.website || data.websiteUrl || "",
 
+                            detailsBackground:
+                                data.detailsBackground || data.detailsBackgroundUrl || "",
+
                             description:
                                 data.description ||
                                 "",
@@ -902,6 +905,31 @@
 
             if (!modal) {
                 return;
+            }
+
+            const backgroundImage =
+                document.getElementById("detailsBackgroundImage");
+
+            const backgroundLayer =
+                document.getElementById("detailsBackgroundLayer");
+
+            const backgroundUrl = String(app.detailsBackground || app.detailsBackgroundUrl || "").trim();
+            let safeBackgroundUrl = "";
+            if (backgroundUrl) {
+                try {
+                    const candidate = new URL(backgroundUrl, window.location.href);
+                    if (candidate.protocol === "http:" || candidate.protocol === "https:") safeBackgroundUrl = candidate.href;
+                } catch (_) { safeBackgroundUrl = ""; }
+            }
+            if (backgroundImage && backgroundLayer) {
+                backgroundImage.onerror = function () { backgroundLayer.hidden = true; };
+                if (safeBackgroundUrl) {
+                    backgroundLayer.hidden = false;
+                    backgroundImage.src = safeBackgroundUrl;
+                } else {
+                    backgroundImage.removeAttribute("src");
+                    backgroundLayer.hidden = true;
+                }
             }
 
             const icon =
@@ -3490,6 +3518,7 @@ main{max-width:none;margin:0 0 0 232px;padding:0 36px}.store-head{padding:32px 0
 <!-- FULL-PAGE APP / SOFTWARE PRODUCT DETAILS -->
 <div class="app-details-modal" id="appDetailsModal" aria-hidden="true">
   <div class="ae-product-page" role="dialog" aria-modal="true" aria-labelledby="detailsName">
+    <div class="ae-product-background" id="detailsBackgroundLayer" hidden aria-hidden="true"><img id="detailsBackgroundImage" alt=""><div class="ae-product-background-shade"></div></div>
     <header class="ae-product-topbar">
       <button type="button" class="details-close" id="detailsClose" aria-label="Back to AppExio"><i class="fa-solid fa-arrow-left"></i><span>Back to store</span></button>
       <a class="ae-product-brand" href="index.html"><img src="favicon.png" alt="">AppExio</a>
@@ -3727,6 +3756,36 @@ footer{background:#0d0d10!important;border-top-color:rgba(255,255,255,.1)!import
 @media(max-width:850px){.store-sidebar{background:#101013!important}.mobile-bottom-nav{background:rgba(18,18,21,.96)!important}.mobile-bottom-nav .bottom-nav-link{color:#aaaab2!important}.mobile-bottom-nav .bottom-nav-link.selected{background:rgba(240,74,89,.16)!important;color:#ff7b85!important}.sidebar-brand{color:#f5f5f6!important}.sidebar-brand-accent{color:#f05a67!important}}
 @media(max-width:760px){.app-hover-preview{display:none!important}.app-card:hover,.app-card:focus-within{transform:none!important}.app-card{overflow:hidden!important}.ae-product-page,.ae-explore-page{background:#0d0d10!important}.ae-product-hero{padding:22px 18px!important}.ae-product-content{color:#eee}.ae-explore-grid .app-card{overflow:hidden!important}}
 @media(prefers-reduced-motion:reduce){.app-hover-preview,.app-card{transition:none!important}}
+
+/* Optional per-app wallpaper, configured from admin.html. */
+.ae-product-page{position:relative;isolation:isolate;background:#0d0d10!important}
+.ae-product-background{position:fixed;inset:0;z-index:-1;overflow:hidden;pointer-events:none}
+.ae-product-background[hidden]{display:none}
+.ae-product-background img{width:100%;height:100%;display:block;object-fit:cover;object-position:center;filter:saturate(.9)}
+.ae-product-background-shade {
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(
+        90deg,
+        rgba(5,7,16,.48),
+        rgba(5,7,16,.38),
+        rgba(5,7,16,.48)
+    );
+}
+.ae-product-page:has(.ae-product-background:not([hidden])) .ae-product-hero{background:rgba(13,17,31,.76)!important;border-color:rgba(255,255,255,.16)!important;backdrop-filter:blur(5px)}
+.ae-product-page:has(.ae-product-background:not([hidden])) .ae-product-topbar{background:rgba(8,10,22,.78)!important;backdrop-filter:blur(16px)}
+.ae-product-page:has(.ae-product-background:not([hidden])) .ae-product-stats .details-stat,.ae-product-page:has(.ae-product-background:not([hidden])) .ae-aside-card{background:rgba(16,20,35,.86)!important;backdrop-filter:blur(10px)}
+.ae-product-page:has(.ae-product-background:not([hidden])) .ae-product-footer{background:rgba(8,10,22,.86)!important}
+@media(max-width:760px){.ae-product-background img{object-position:center}.ae-product-background-shade {
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(
+        90deg,
+        rgba(5,7,16,.48),
+        rgba(5,7,16,.38),
+        rgba(5,7,16,.48)
+    );
+}
 </style>
 
 
