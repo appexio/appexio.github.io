@@ -400,13 +400,16 @@
                 const state = window.__appexioHoverState;
                 if (!state) return;
                 if (state.hideTimer) window.clearTimeout(state.hideTimer);
+                if (state.showTimer) window.clearTimeout(state.showTimer);
                 state.hideTimer = null;
+                state.showTimer = null;
                 if (state.activePreview) {
-                    state.activePreview.classList.remove("is-visible", "is-left");
+                    state.activePreview.classList.remove("is-visible");
                     state.activePreview.setAttribute("aria-hidden", "true");
-                    state.activePreview.remove();
-                    state.activePreview = null;
                 }
+                if (state.activeCard) state.activeCard.classList.remove("is-expanded");
+                state.activePreview = null;
+                state.activeCard = null;
             }
 
             function openDetails(event) {
@@ -733,12 +736,13 @@
             preview.append(previewBadge, previewIdentity, previewMeta, previewSpecs, previewDescription, previewActionRow);
             card.appendChild(preview);
 
-            // Keep one compact preview open beside the active card. The preview is
-            // portalled to <body> so the pointer can move into it without the
-            // card's bounds closing it prematurely.
+            // The preview overlays this card in place (it never adds grid height).
+            // A half-second dwell prevents accidental previews while browsing cards.
             const hoverState = window.__appexioHoverState || (window.__appexioHoverState = {
                 activePreview: null,
-                hideTimer: null
+                activeCard: null,
+                hideTimer: null,
+                showTimer: null
             });
 
             function clearPreviewHideTimer() {
@@ -748,102 +752,71 @@
                 }
             }
 
-            function positionPreview() {
-                const cardRect = card.getBoundingClientRect();
-                const panelRect = preview.getBoundingClientRect();
-                const panelWidth = panelRect.width || 328;
-                const panelHeight = panelRect.height || 280;
-                const edgeGap = 12;
-                const sideGap = 12;
-                let left = cardRect.right + sideGap;
-                let placeLeft = false;
-
-                // Prefer the right side (like the supplied reference), and
-                // flip to the left only when the right edge would overflow.
-                if (left + panelWidth > window.innerWidth - edgeGap) {
-                    left = cardRect.left - panelWidth - sideGap;
-                    placeLeft = true;
+            function clearPreviewShowTimer() {
+                if (hoverState.showTimer) {
+                    window.clearTimeout(hoverState.showTimer);
+                    hoverState.showTimer = null;
                 }
-                left = Math.max(edgeGap, Math.min(left, window.innerWidth - panelWidth - edgeGap));
-
-                let top = cardRect.top + (cardRect.height - panelHeight) / 2;
-                const maxTop = Math.max(edgeGap, window.innerHeight - panelHeight - edgeGap);
-                top = Math.max(edgeGap, Math.min(top, maxTop));
-
-                preview.style.left = `${left}px`;
-                preview.style.top = `${top}px`;
-                preview.classList.toggle('is-left', placeLeft);
             }
 
             function showPreview() {
                 if (!window.matchMedia || !window.matchMedia('(hover: hover) and (pointer: fine)').matches) return;
                 clearPreviewHideTimer();
+                clearPreviewShowTimer();
 
                 if (hoverState.activePreview && hoverState.activePreview !== preview) {
-                    hoverState.activePreview.classList.remove('is-visible', 'is-left');
-                    hoverState.activePreview.setAttribute('aria-hidden', 'true');
-                    hoverState.activePreview.remove();
+                    hoverState.activePreview.classList.remove("is-visible");
+                    hoverState.activePreview.setAttribute("aria-hidden", "true");
+                    if (hoverState.activeCard) hoverState.activeCard.classList.remove("is-expanded");
                 }
 
                 hoverState.activePreview = preview;
-                if (preview.parentNode !== document.body) document.body.appendChild(preview);
-                preview.setAttribute('aria-hidden', 'false');
-                preview.classList.add('is-visible');
-                positionPreview();
+                hoverState.activeCard = card;
+                card.classList.add("is-expanded");
+                preview.setAttribute("aria-hidden", "false");
+                preview.classList.add("is-visible");
             }
 
             function hidePreviewSoon() {
+                clearPreviewShowTimer();
                 clearPreviewHideTimer();
                 hoverState.hideTimer = window.setTimeout(() => {
-                    if (hoverState.activePreview !== preview) return;
-                    preview.classList.remove('is-visible', 'is-left');
-                    preview.setAttribute('aria-hidden', 'true');
+                    if (hoverState.activePreview !== preview) {
+                        hoverState.hideTimer = null;
+                        return;
+                    }
+                    preview.classList.remove("is-visible");
+                    preview.setAttribute("aria-hidden", "true");
+                    card.classList.remove("is-expanded");
                     hoverState.activePreview = null;
-                    window.setTimeout(() => {
-                        if (hoverState.activePreview !== preview && preview.isConnected) preview.remove();
-                    }, 190);
+                    hoverState.activeCard = null;
                     hoverState.hideTimer = null;
-                }, 240);
+                }, 160);
             }
-
-            preview.addEventListener('pointerenter', clearPreviewHideTimer);
-            preview.addEventListener('pointerleave', hidePreviewSoon);
-            preview.addEventListener('focusin', clearPreviewHideTimer);
-            preview.addEventListener('focusout', event => {
-                if (!preview.contains(event.relatedTarget)) hidePreviewSoon();
-            });
 
             card.addEventListener('pointerenter', event => {
-                if (event.pointerType !== 'touch') showPreview();
+                if (event.pointerType === 'touch') return;
+                clearPreviewHideTimer();
+                clearPreviewShowTimer();
+
+                // Close the previous card's overlay as soon as the pointer moves
+                // to a different card; only the new card gets the one-second delay.
+                if (hoverState.activePreview && hoverState.activePreview !== preview) {
+                    hoverState.activePreview.classList.remove("is-visible");
+                    hoverState.activePreview.setAttribute("aria-hidden", "true");
+                    if (hoverState.activeCard) hoverState.activeCard.classList.remove("is-expanded");
+                    hoverState.activePreview = null;
+                    hoverState.activeCard = null;
+                }
+
+                hoverState.showTimer = window.setTimeout(showPreview, 500);
             });
             card.addEventListener('pointerleave', hidePreviewSoon);
+            // Keyboard users get the same preview without needing a mouse delay.
             card.addEventListener('focusin', showPreview);
             card.addEventListener('focusout', event => {
-                if (!card.contains(event.relatedTarget) && !preview.contains(event.relatedTarget)) hidePreviewSoon();
+                if (!card.contains(event.relatedTarget)) hidePreviewSoon();
             });
-
-            // Reposition an open panel when the viewport changes.
-            if (!window.__appexioPreviewResizeBound) {
-                window.__appexioPreviewResizeBound = true;
-                window.addEventListener('resize', () => {
-                    const active = window.__appexioHoverState && window.__appexioHoverState.activePreview;
-                    if (active && active.isConnected) {
-                        const owner = active.__appexioOwnerCard;
-                        if (owner && owner.isConnected) {
-                            const rect = owner.getBoundingClientRect();
-                            const panel = active.getBoundingClientRect();
-                            let x = rect.right + 12;
-                            if (x + panel.width > window.innerWidth - 12) x = rect.left - panel.width - 12;
-                            x = Math.max(12, Math.min(x, window.innerWidth - panel.width - 12));
-                            let y = rect.top + (rect.height - panel.height) / 2;
-                            y = Math.max(12, Math.min(y, window.innerHeight - panel.height - 12));
-                            active.style.left = `${x}px`;
-                            active.style.top = `${y}px`;
-                        }
-                    }
-                }, { passive: true });
-            }
-            preview.__appexioOwnerCard = card;
 
             /* =================================================
                EXTRA INFORMATION
@@ -3919,6 +3892,196 @@ body { min-width: 0 !important; }
 }
 @media (prefers-reduced-motion: reduce) {
   .app-hover-preview { transition: none !important; }
+}
+</style>
+
+
+
+<style id="appexio-inline-card-hover">
+/* Desktop hover preview: a small overlay contained by the card itself.
+   It is absolutely positioned, so it never pushes or rearranges other cards. */
+@media (min-width: 761px) and (hover: hover) and (pointer: fine) {
+  .app-card {
+    position: relative !important;
+    isolation: isolate !important;
+  }
+
+  .app-card.is-expanded {
+    z-index: 140 !important;
+    transform: translateY(-3px) scale(1.04) !important;
+    transform-origin: center center !important;
+    box-shadow: 0 18px 42px rgba(0,0,0,.52) !important;
+  }
+
+  .app-card .app-hover-preview,
+  .app-card:hover .app-hover-preview,
+  .app-card:focus-within .app-hover-preview {
+    position: absolute !important;
+    /* Slightly overhang the card so the preview feels roomier without
+       changing grid dimensions or pushing neighboring cards away. */
+    inset: -12px !important;
+    left: -12px !important;
+    top: -12px !important;
+    right: -12px !important;
+    bottom: -12px !important;
+    width: auto !important;
+    max-width: none !important;
+    max-height: none !important;
+    min-height: 0 !important;
+    box-sizing: border-box !important;
+    display: flex !important;
+    flex-direction: column !important;
+    gap: 0 !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    overflow: hidden !important;
+    border: 1px solid rgba(255,255,255,.14) !important;
+    border-radius: inherit !important;
+    background: linear-gradient(145deg, rgba(31,32,39,.99), rgba(13,14,19,.99)) !important;
+    box-shadow: inset 0 1px 0 rgba(255,255,255,.035) !important;
+    opacity: 0 !important;
+    visibility: hidden !important;
+    pointer-events: none !important;
+    transform: scale(.985) !important;
+    transform-origin: center center !important;
+    transition: opacity .18s ease, transform .18s ease, visibility .18s ease !important;
+    z-index: 30 !important;
+  }
+
+  .app-card.is-expanded .app-hover-preview,
+  .app-card.is-expanded:hover .app-hover-preview,
+  .app-card.is-expanded:focus-within .app-hover-preview {
+    opacity: 1 !important;
+    visibility: visible !important;
+    pointer-events: auto !important;
+    transform: scale(1) !important;
+  }
+
+  .app-preview-badge {
+    position: absolute !important;
+    top: 7px !important;
+    left: 8px !important;
+    max-width: 48% !important;
+    padding: 3px 6px !important;
+    overflow: hidden !important;
+    text-overflow: ellipsis !important;
+    font-size: 7px !important;
+    line-height: 1.2 !important;
+    letter-spacing: .35px !important;
+  }
+
+  .app-preview-meta {
+    position: absolute !important;
+    top: 8px !important;
+    right: 8px !important;
+    display: flex !important;
+    gap: 6px !important;
+    font-size: 8px !important;
+    line-height: 1.2 !important;
+    white-space: nowrap !important;
+  }
+  .app-preview-meta span + span { padding-left: 6px !important; }
+
+  .app-preview-identity {
+    position: absolute !important;
+    top: 25px !important;
+    left: 8px !important;
+    right: 8px !important;
+    display: flex !important;
+    align-items: center !important;
+    gap: 8px !important;
+    min-width: 0 !important;
+  }
+  .app-preview-icon {
+    width: 31px !important;
+    height: 31px !important;
+    flex: 0 0 31px !important;
+    border-radius: 8px !important;
+  }
+  .app-preview-titlebox { min-width: 0 !important; }
+  .app-preview-title {
+    display: -webkit-box !important;
+    -webkit-line-clamp: 1 !important;
+    -webkit-box-orient: vertical !important;
+    overflow: hidden !important;
+    font-size: 10px !important;
+    line-height: 1.2 !important;
+    letter-spacing: -.1px !important;
+  }
+  .app-preview-developer {
+    margin-top: 3px !important;
+    font-size: 8px !important;
+    line-height: 1.2 !important;
+  }
+
+  .app-preview-specs {
+    position: absolute !important;
+    left: 8px !important;
+    right: 8px !important;
+    bottom: 44px !important;
+    display: grid !important;
+    grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
+    gap: 4px !important;
+  }
+  .app-preview-spec {
+    min-width: 0 !important;
+    gap: 2px !important;
+    padding: 4px 5px !important;
+    border-radius: 5px !important;
+  }
+  .app-preview-spec > span {
+    font-size: 6px !important;
+    line-height: 1.1 !important;
+    letter-spacing: .25px !important;
+  }
+  .app-preview-spec strong {
+    font-size: 7.5px !important;
+    line-height: 1.2 !important;
+    -webkit-line-clamp: 1 !important;
+  }
+
+  .app-preview-description {
+    position: absolute !important;
+    left: 9px !important;
+    right: 9px !important;
+    bottom: 29px !important;
+    display: -webkit-box !important;
+    -webkit-line-clamp: 1 !important;
+    -webkit-box-orient: vertical !important;
+    overflow: hidden !important;
+    min-height: 0 !important;
+    font-size: 8px !important;
+    line-height: 11px !important;
+    white-space: normal !important;
+  }
+
+  .app-preview-actions {
+    position: absolute !important;
+    left: 8px !important;
+    right: 8px !important;
+    bottom: 5px !important;
+    display: flex !important;
+    gap: 5px !important;
+  }
+  .app-hover-download {
+    width: 100% !important;
+    min-height: 22px !important;
+    padding: 0 8px !important;
+    gap: 6px !important;
+    border-radius: 6px !important;
+    font-size: 9px !important;
+    line-height: 1 !important;
+  }
+  .app-hover-download .app-preview-external { font-size: 7px !important; }
+}
+
+/* Touch layouts remain unchanged; tapping a card opens its normal details page. */
+@media (max-width: 760px), (hover: none), (pointer: coarse) {
+  .app-hover-preview { display: none !important; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .app-card .app-hover-preview { transition: none !important; }
 }
 </style>
 
