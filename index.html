@@ -1913,14 +1913,15 @@
             const detailsButton = document.getElementById("aeFeaturedDetails");
             if (!title || !description || !artwork || !video || !selectors || !recommendedList) return;
 
-            const games = (Array.isArray(manualCatalogApps) ? manualCatalogApps : [])
-                .filter(item => inferContentType(item) === "Games" && !item.external);
-            const isFeatured = item => item.featured === true || String(item.homepageSection || "").toLowerCase() === "featured";
-            const isRecommended = item => ["recommended", "trending"].includes(String(item.homepageSection || "").toLowerCase());
-            let featuredItems = games.filter(item => isFeatured(item));
-            if (!featuredItems.length) featuredItems = games.filter(item => appPreviewVideos(item).length);
-            if (!featuredItems.length) featuredItems = games.slice(0, 5);
-            featuredItems = featuredItems.slice(0, 6);
+            const allApps = (Array.isArray(manualCatalogApps) ? manualCatalogApps : [])
+    .filter(item => !item.external);
+
+const games = allApps.filter(item => inferContentType(item) === "Games");
+
+const isFeatured = item => item.featured === true;
+const isRecommended = item => ["recommended", "trending"].includes(String(item.homepageSection || "").toLowerCase());
+
+const featuredItems = allApps.filter(item => isFeatured(item)).slice(0, 6);
 
             const current = featuredItems[Math.min(aeFeaturedIndex, Math.max(0, featuredItems.length - 1))] || null;
             aeFeaturedIndex = current ? featuredItems.indexOf(current) : 0;
@@ -1957,28 +1958,59 @@
                 detailsButton.onclick = () => openAppDetails(current);
 
                 const videos = appPreviewVideos(current);
-                const liveBadge = hub.querySelector(".ae-video-live"); if (liveBadge) liveBadge.hidden = !videos.length;
-                video.pause();
-                video.removeAttribute("src");
-                video.oncanplay = null;
-                video.onerror = null;
-                if (videos.length) {
-                    video.hidden = false;
-                    video.muted = true;
-                    video.loop = true;
-                    video.autoplay = true;
-                    video.playsInline = true;
-                    video.poster = artUrl;
-                    video.oncanplay = () => { artwork.hidden = true; };
-                    video.onerror = () => { video.hidden = true; artwork.hidden = false; };
-                    video.src = videos[0];
-                    video.load();
-                    const playResult = video.play();
-                    if (playResult && typeof playResult.catch === "function") playResult.catch(() => {});
-                } else {
-                    video.hidden = true;
-                    artwork.hidden = false;
-                }
+
+const liveBadge = hub.querySelector(".ae-video-live");
+if (liveBadge) liveBadge.hidden = !videos.length;
+
+video.pause();
+video.removeAttribute("src");
+video.oncanplay = null;
+video.onerror = null;
+video.onended = null;
+
+if (videos.length) {
+    video.hidden = false;
+    video.muted = true;
+    video.autoplay = true;
+    video.playsInline = true;
+    video.poster = artUrl;
+    video.loop = videos.length === 1;
+
+    let currentVideoIndex = 0;
+
+    video.oncanplay = () => {
+        artwork.hidden = true;
+    };
+
+    video.onerror = () => {
+        video.hidden = true;
+        artwork.hidden = false;
+    };
+
+    video.onended = () => {
+        if (videos.length > 1) {
+            currentVideoIndex = (currentVideoIndex + 1) % videos.length;
+            video.src = videos[currentVideoIndex];
+            video.load();
+
+            const result = video.play();
+            if (result && typeof result.catch === "function") {
+                result.catch(() => {});
+            }
+        }
+    };
+
+    video.src = videos[0];
+    video.load();
+
+    const playResult = video.play();
+    if (playResult && typeof playResult.catch === "function") {
+        playResult.catch(() => {});
+    }
+} else {
+    video.hidden = true;
+    artwork.hidden = false;
+}
 
                 selectors.replaceChildren();
                 if (featuredItems.length > 1) {
