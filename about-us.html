@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+
 <!DOCTYPE html>
 
 <html lang="en">
@@ -14,7 +14,7 @@
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&amp;display=swap" rel="stylesheet"/>
 <style>
         :root {
-            color-scheme: dark;
+            color-scheme: only dark;
             --bg: #0b0d12;
             --surface: #12161f;
             --surface-deep: #191e29;
@@ -29,7 +29,7 @@
         }
 
         * { box-sizing: border-box; margin: 0; padding: 0; }
-        html { min-width: 320px; scroll-behavior: smooth; background: var(--bg); color-scheme: dark; }
+                html { min-width: 320px; scroll-behavior: smooth; background: var(--bg); color-scheme: only dark; }
         body {
             min-width: 320px;
             width: 100%;
@@ -54,14 +54,14 @@
             align-items: center;
             justify-content: space-between;
             padding: 10px clamp(18px, 6vw, 82px);
-            background: rgba(11,13,18,.92);
+                        background: #0b0d12;
             border-bottom: 1px solid rgba(255,255,255,.10);
             box-shadow: 0 8px 28px rgba(0,0,0,.22);
-            backdrop-filter: blur(22px);
-            -webkit-backdrop-filter: blur(22px);
+
         }
         .navbar-logo { display: inline-flex; align-items: center; justify-content: center; flex: 0 0 auto; }
-        .navbar-logo img { display: block; width: 36px; height: 36px; object-fit: contain; }
+                .navbar-logo img { display: block; width: 36px; height: 36px; object-fit: contain; filter: none !important; mix-blend-mode: normal !important; opacity: 1 !important; }
+
         .nav-links { display: flex; align-items: center; gap: 12px; }
         .nav-links a {
             display: inline-flex;
