@@ -642,33 +642,14 @@
 const cardInfo = document.createElement("div");
 cardInfo.className = "app-card-extra-info";
 
-const version = app.version || "Not listed";
 const size = app.size || "Not listed";
-const compatibility = app.android || "Not listed";
-const category = app.category || "Not listed";
 const description = app.description || "No description available.";
 
 cardInfo.innerHTML = `
-    <div class="app-card-specs">
-        <div class="app-card-spec">
-            <span><i class="fa-solid fa-code-branch"></i> VERSION</span>
-            <strong>${escapeHTML(String(version))}</strong>
-        </div>
-
-        <div class="app-card-spec">
-            <span><i class="fa-solid fa-database"></i> SIZE</span>
-            <strong>${escapeHTML(String(size))}</strong>
-        </div>
-
-        <div class="app-card-spec">
-            <span><i class="fa-solid fa-desktop"></i> COMPATIBILITY</span>
-            <strong>${escapeHTML(String(compatibility))}</strong>
-        </div>
-
-        <div class="app-card-spec">
-            <span><i class="fa-solid fa-layer-group"></i> CATEGORY</span>
-            <strong>${escapeHTML(String(category))}</strong>
-        </div>
+    <div class="app-card-size">
+        <i class="fa-solid fa-database"></i>
+        <span>Size:</span>
+        <strong>${escapeHTML(String(size))}</strong>
     </div>
 
     <p class="app-card-description">
@@ -677,7 +658,6 @@ cardInfo.innerHTML = `
 `;
 
 card.appendChild(cardInfo);
-
 card.dataset.version = String(app.version || "");
 card.dataset.size = String(app.size || "");
 
@@ -4775,67 +4755,43 @@ footer { background:#09151f !important; border-color:rgba(145,183,209,.12) !impo
   display: none !important;
 }
 
-/* PERMANENT APP CARD INFORMATION */
+/* COMPACT APP CARD INFORMATION */
 
 .app-card-extra-info {
-    display: block !important;
     width: 100% !important;
     min-width: 0 !important;
-    margin-top: 12px !important;
+    margin-top: 6px !important;
     grid-column: 1 / -1 !important;
 }
 
-.app-card-specs {
-    display: grid !important;
-    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
-    gap: 6px !important;
-    width: 100% !important;
-}
-
-.app-card-spec {
-    min-width: 0 !important;
-    padding: 8px !important;
-    background: rgba(255,255,255,.045) !important;
-    border: 1px solid rgba(145,183,209,.14) !important;
-    border-radius: 4px !important;
-}
-
-.app-card-spec span {
-    display: block !important;
-    margin-bottom: 5px !important;
+.app-card-size {
+    display: flex !important;
+    align-items: center !important;
+    gap: 5px !important;
     color: #8faabd !important;
-    font-size: 8px !important;
-    font-weight: 800 !important;
-    letter-spacing: .5px !important;
+    font-size: 10px !important;
 }
 
-.app-card-spec span i {
-    margin-right: 3px !important;
+.app-card-size i {
     color: #66c0f4 !important;
 }
 
-.app-card-spec strong {
-    display: -webkit-box !important;
-    -webkit-line-clamp: 2 !important;
-    -webkit-box-orient: vertical !important;
-    overflow: hidden !important;
-    overflow-wrap: anywhere !important;
+.app-card-size strong {
     color: #edf5fa !important;
-    font-size: 10px !important;
-    line-height: 1.4 !important;
-    font-weight: 650 !important;
+    font-weight: 600 !important;
 }
 
 .app-card-description {
     display: -webkit-box !important;
     width: 100% !important;
-    margin: 9px 0 0 !important;
+    margin: 5px 0 0 !important;
     color: #a5b7c5 !important;
     font-size: 10px !important;
-    line-height: 1.6 !important;
-    -webkit-line-clamp: 3 !important;
+    line-height: 1.4 !important;
+    -webkit-line-clamp: 2 !important;
     -webkit-box-orient: vertical !important;
     overflow: hidden !important;
+    overflow-wrap: anywhere !important;
 }
 
 .app-card-extra-info,
