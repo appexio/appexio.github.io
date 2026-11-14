@@ -124,7 +124,7 @@
             if (!gamesGrid) {
 
                 console.error(
-                    "APKCity: gamesGrid element was not found."
+                    "AppExio: gamesGrid element was not found."
                 );
 
                 return;
@@ -185,7 +185,7 @@
                      */
 
                     console.warn(
-                        "APKCity: createdAt ordering failed. Loading apps without ordering.",
+                        "AppExio: createdAt ordering failed. Loading apps without ordering.",
                         orderError
                     );
 
@@ -226,7 +226,7 @@
 
                             developer:
                                 data.developer ||
-                                "APKCity Developer",
+                                "AppExio Developer",
 
                             category:
                                 data.category ||
@@ -295,6 +295,15 @@
                                     ? data.screenshots
                                     : [],
 
+                            videos:
+                                Array.isArray(data.videos)
+                                    ? data.videos
+                                    : Array.isArray(data.videoUrls)
+                                        ? data.videoUrls
+                                        : (data.video || data.trailerUrl)
+                                            ? [data.video || data.trailerUrl]
+                                            : [],
+
                             featured:
                                 Boolean(
                                     data.featured
@@ -326,12 +335,12 @@
 
 
                 console.log(
-                    "APKCity: Total apps loaded from Firestore:",
+                    "AppExio: Total apps loaded from Firestore:",
                     apps.length
                 );
 
                 console.log(
-                    "APKCity: Apps:",
+                    "AppExio: Apps:",
                     apps
                 );
 
@@ -366,7 +375,7 @@
             } catch (error) {
 
                 console.error(
-                    "APKCity: Error loading apps from Firestore:",
+                    "AppExio: Error loading apps from Firestore:",
                     error
                 );
 
@@ -396,41 +405,17 @@
             card.setAttribute("tabindex", "0");
             card.setAttribute("aria-label", `View ${app.name || "app"} details`);
 
-            function dismissActivePreview() {
-                const state = window.__appexioHoverState;
-                if (!state) return;
-                if (state.hideTimer) window.clearTimeout(state.hideTimer);
-                if (state.showTimer) window.clearTimeout(state.showTimer);
-                state.hideTimer = null;
-                state.showTimer = null;
-                if (state.activePreview) {
-                    state.activePreview.classList.remove("is-visible");
-                    state.activePreview.setAttribute("aria-hidden", "true");
-                }
-                if (state.activeCard) state.activeCard.classList.remove("is-expanded");
-                state.activePreview = null;
-                state.activeCard = null;
-            }
-
-            function openDetails(event) {
-                if (event && event.target && event.target.closest && event.target.closest(".app-hover-download")) {
-                    return;
-                }
-                dismissActivePreview();
+            function openDetails() {
                 openAppDetails(app);
             }
 
-            card.addEventListener("click", function (event) {
-                if (event.target.closest && event.target.closest(".app-hover-download")) return;
-                openDetails(event);
-            });
-
+            // Keep cards clickable and keyboard-accessible without a hover information popup.
+            card.addEventListener("click", openDetails);
             card.addEventListener("keydown", function (event) {
-                // Let buttons and links inside the preview keep their native keyboard behavior.
                 if (event.target !== card) return;
                 if (event.key === "Enter" || event.key === " ") {
                     event.preventDefault();
-                    openDetails(event);
+                    openDetails();
                 }
             });
 
@@ -611,6 +596,19 @@
                 verified
             );
 
+            const cover = document.createElement("img");
+            cover.className = "app-cover-art";
+            cover.alt = "";
+            cover.loading = "lazy";
+            const coverCandidates = [app.detailsBackground, ...(Array.isArray(app.screenshots) ? app.screenshots : []), app.icon].filter(Boolean);
+            let coverCandidateIndex = 0;
+            cover.src = coverCandidates[coverCandidateIndex] || app.icon || "logo.png";
+            cover.onerror = function () {
+                coverCandidateIndex += 1;
+                if (coverCandidateIndex < coverCandidates.length) this.src = coverCandidates[coverCandidateIndex];
+                else this.remove();
+            };
+            card.appendChild(cover);
 
             card.appendChild(
                 icon
@@ -636,187 +634,6 @@
             card.appendChild(
                 meta
             );
-
-            /* =================================================
-               PROFESSIONAL HOVER PREVIEW
-               Shows key information without opening the details page.
-            ================================================= */
-            const preview = document.createElement("section");
-            preview.className = "app-hover-preview";
-            preview.setAttribute("aria-hidden", "true");
-
-            const previewBadge = document.createElement("span");
-            previewBadge.className = "app-preview-badge";
-            previewBadge.textContent = app.sourceLabel || app.category || "APPEXIO LISTING";
-
-            const previewIdentity = document.createElement("div");
-            previewIdentity.className = "app-preview-identity";
-
-            const previewIcon = document.createElement("img");
-            previewIcon.className = "app-preview-icon";
-            previewIcon.src = app.icon || "logo.png";
-            previewIcon.alt = "";
-            previewIcon.loading = "lazy";
-            previewIcon.onerror = function () {
-                this.onerror = null;
-                this.src = "logo.png";
-            };
-
-            const previewTitleBox = document.createElement("div");
-            previewTitleBox.className = "app-preview-titlebox";
-            const previewTitle = document.createElement("h3");
-            previewTitle.className = "app-preview-title";
-            previewTitle.textContent = app.name || "Unnamed app";
-            const previewDeveloper = document.createElement("p");
-            previewDeveloper.className = "app-preview-developer";
-            previewDeveloper.textContent = app.developer || "AppExio publisher";
-            previewTitleBox.append(previewTitle, previewDeveloper);
-            previewIdentity.append(previewIcon, previewTitleBox);
-
-            const previewMeta = document.createElement("div");
-            previewMeta.className = "app-preview-meta";
-            const previewRating = document.createElement("span");
-            previewRating.innerHTML = `<i class="fa-solid fa-star"></i> ${escapeHTML(String(app.rating ?? "New"))}`;
-            const previewDownloads = document.createElement("span");
-            previewDownloads.innerHTML = `<i class="fa-solid fa-download"></i> ${escapeHTML(formatDownloads(app.downloads))}`;
-            previewMeta.append(previewRating, previewDownloads);
-
-            const previewSpecs = document.createElement("div");
-            previewSpecs.className = "app-preview-specs";
-            const previewPlatform = app.compatibility || app.android || app.platform || "Not specified";
-            [
-                ["VERSION", app.version || "Not listed"],
-                ["SIZE", app.size || "Not listed"],
-                ["COMPATIBILITY", previewPlatform]
-            ].forEach(([label, value]) => {
-                const spec = document.createElement("div");
-                spec.className = "app-preview-spec";
-                const specLabel = document.createElement("span");
-                specLabel.textContent = label;
-                const specValue = document.createElement("strong");
-                specValue.textContent = String(value);
-                spec.append(specLabel, specValue);
-                previewSpecs.appendChild(spec);
-            });
-
-            const previewDescription = document.createElement("p");
-            previewDescription.className = "app-preview-description";
-            previewDescription.textContent = app.description || "Open the listing to review publisher information, platform support and available downloads.";
-
-            const previewActionRow = document.createElement("div");
-            previewActionRow.className = "app-preview-actions";
-            const previewDownload = document.createElement("a");
-            previewDownload.className = "app-hover-download";
-            previewDownload.innerHTML = `<i class="fa-solid fa-download"></i><span>${escapeHTML(app.downloadLabel || "Download")}</span><i class="fa-solid fa-arrow-up-right-from-square app-preview-external"></i>`;
-            const downloadUrl = String(app.apk || "").trim();
-            let safeDownloadUrl = "";
-            if (downloadUrl && downloadUrl !== "#") {
-                try {
-                    const candidateUrl = new URL(downloadUrl, window.location.href);
-                    if (candidateUrl.protocol === "http:" || candidateUrl.protocol === "https:") safeDownloadUrl = candidateUrl.href;
-                } catch (_) {
-                    safeDownloadUrl = "";
-                }
-            }
-            if (safeDownloadUrl) {
-                previewDownload.href = safeDownloadUrl;
-                previewDownload.target = "_blank";
-                previewDownload.rel = "noopener noreferrer";
-                previewDownload.setAttribute("aria-label", `${app.downloadLabel || "Download"} ${app.name || "app"}`);
-            } else {
-                previewDownload.removeAttribute("href");
-                previewDownload.classList.add("is-unavailable");
-                previewDownload.setAttribute("aria-disabled", "true");
-                previewDownload.title = "A download link has not been added for this item yet.";
-                previewDownload.innerHTML = `<i class="fa-solid fa-circle-info"></i><span>Download unavailable</span>`;
-            }
-            previewDownload.addEventListener("click", event => event.stopPropagation());
-            previewActionRow.appendChild(previewDownload);
-
-            preview.append(previewBadge, previewIdentity, previewMeta, previewSpecs, previewDescription, previewActionRow);
-            card.appendChild(preview);
-
-            // The preview overlays this card in place (it never adds grid height).
-            // A half-second dwell prevents accidental previews while browsing cards.
-            const hoverState = window.__appexioHoverState || (window.__appexioHoverState = {
-                activePreview: null,
-                activeCard: null,
-                hideTimer: null,
-                showTimer: null
-            });
-
-            function clearPreviewHideTimer() {
-                if (hoverState.hideTimer) {
-                    window.clearTimeout(hoverState.hideTimer);
-                    hoverState.hideTimer = null;
-                }
-            }
-
-            function clearPreviewShowTimer() {
-                if (hoverState.showTimer) {
-                    window.clearTimeout(hoverState.showTimer);
-                    hoverState.showTimer = null;
-                }
-            }
-
-            function showPreview() {
-                if (!window.matchMedia || !window.matchMedia('(hover: hover) and (pointer: fine)').matches) return;
-                clearPreviewHideTimer();
-                clearPreviewShowTimer();
-
-                if (hoverState.activePreview && hoverState.activePreview !== preview) {
-                    hoverState.activePreview.classList.remove("is-visible");
-                    hoverState.activePreview.setAttribute("aria-hidden", "true");
-                    if (hoverState.activeCard) hoverState.activeCard.classList.remove("is-expanded");
-                }
-
-                hoverState.activePreview = preview;
-                hoverState.activeCard = card;
-                card.classList.add("is-expanded");
-                preview.setAttribute("aria-hidden", "false");
-                preview.classList.add("is-visible");
-            }
-
-            function hidePreviewSoon() {
-                clearPreviewShowTimer();
-                clearPreviewHideTimer();
-                hoverState.hideTimer = window.setTimeout(() => {
-                    if (hoverState.activePreview !== preview) {
-                        hoverState.hideTimer = null;
-                        return;
-                    }
-                    preview.classList.remove("is-visible");
-                    preview.setAttribute("aria-hidden", "true");
-                    card.classList.remove("is-expanded");
-                    hoverState.activePreview = null;
-                    hoverState.activeCard = null;
-                    hoverState.hideTimer = null;
-                }, 160);
-            }
-
-            card.addEventListener('pointerenter', event => {
-                if (event.pointerType === 'touch') return;
-                clearPreviewHideTimer();
-                clearPreviewShowTimer();
-
-                // Close the previous card's overlay as soon as the pointer moves
-                // to a different card; only the new card gets the one-second delay.
-                if (hoverState.activePreview && hoverState.activePreview !== preview) {
-                    hoverState.activePreview.classList.remove("is-visible");
-                    hoverState.activePreview.setAttribute("aria-hidden", "true");
-                    if (hoverState.activeCard) hoverState.activeCard.classList.remove("is-expanded");
-                    hoverState.activePreview = null;
-                    hoverState.activeCard = null;
-                }
-
-                hoverState.showTimer = window.setTimeout(showPreview, 500);
-            });
-            card.addEventListener('pointerleave', hidePreviewSoon);
-            // Keyboard users get the same preview without needing a mouse delay.
-            card.addEventListener('focusin', showPreview);
-            card.addEventListener('focusout', event => {
-                if (!card.contains(event.relatedTarget)) hidePreviewSoon();
-            });
 
             /* =================================================
                EXTRA INFORMATION
@@ -883,7 +700,7 @@
             const backgroundLayer =
                 document.getElementById("detailsBackgroundLayer");
 
-            const backgroundUrl = String(app.detailsBackground || app.detailsBackgroundUrl || "").trim();
+            const backgroundUrl = String(app.detailsBackground || app.detailsBackgroundUrl || app.screenshots?.[0] || app.icon || "").trim();
             let safeBackgroundUrl = "";
             if (backgroundUrl) {
                 try {
@@ -1105,6 +922,126 @@
             screenshotSection.style.display =
                 shots.length ? "block" : "none";
 
+            // Build the Steam-style media area from direct MP4/WebM URLs supplied in admin.
+            const rawVideos = Array.isArray(app.videos) ? app.videos :
+                (Array.isArray(app.videoUrls) ? app.videoUrls : (app.video || app.trailerUrl ? [app.video || app.trailerUrl] : []));
+            const videoUrls = rawVideos.map(value => String(value || "").trim()).filter(value => {
+                try { const u = new URL(value, window.location.href); return (u.protocol === "http:" || u.protocol === "https:") && /\.(mp4|webm|ogg)(?:$|[?#])/i.test(u.href); }
+                catch (_) { return false; }
+            }).slice(0, 10);
+            const video = document.getElementById("detailsVideo");
+            const videoStage = document.getElementById("detailsVideoStage");
+            const videoEmpty = document.getElementById("detailsVideoEmpty");
+            if (videoEmpty?.querySelector("strong")) videoEmpty.querySelector("strong").textContent = "Media coming soon";
+            const fallback = document.getElementById("detailsMediaFallback");
+            const fallbackImage = document.getElementById("detailsMediaFallbackImage");
+            const playlist = document.getElementById("detailsVideoPlaylist");
+            const mediaCount = document.getElementById("detailsMediaCount");
+            const screenshotRail = document.getElementById("detailsScreenshotRail");
+            const specCover = document.getElementById("detailsSpecCoverImage");
+            const coverName = document.getElementById("detailsCoverName");
+            const coverUrl = safeBackgroundUrl || shots[0] || app.icon || "logo.png";
+            if (specCover) { specCover.src = coverUrl; specCover.onerror = function () { this.onerror = null; this.src = app.icon || "logo.png"; }; }
+            if (coverName) coverName.textContent = app.name || "AppExio listing";
+            if (fallbackImage) { fallbackImage.src = shots[0] || app.icon || "logo.png"; fallbackImage.alt = `${app.name || "App"} preview`; }
+            if (playlist) playlist.innerHTML = "";
+            if (screenshotRail) screenshotRail.innerHTML = "";
+            if (video) {
+                video.pause();
+                video.removeAttribute("src");
+                video.innerHTML = "";
+                video.onended = null;
+                video.onerror = null;
+                video.load();
+            }
+            let activeVideoIndex = 0;
+            const failedVideoIndexes = new Set();
+            const playVideoAt = index => {
+                if (!video || !videoUrls.length) return;
+                activeVideoIndex = (index + videoUrls.length) % videoUrls.length;
+                video.hidden = false;
+                if (fallback) fallback.hidden = true;
+                if (videoEmpty) videoEmpty.hidden = true;
+                video.src = videoUrls[activeVideoIndex];
+                video.load();
+                const playAttempt = video.play();
+                if (playAttempt && typeof playAttempt.catch === "function") playAttempt.catch(() => {});
+                if (playlist) Array.from(playlist.children).forEach((button, buttonIndex) => button.classList.toggle("active", buttonIndex === activeVideoIndex));
+            };
+            if (videoUrls.length) {
+                video.hidden = false;
+                if (videoEmpty) videoEmpty.hidden = true;
+                if (fallback) fallback.hidden = true;
+                if (mediaCount) mediaCount.textContent = `${videoUrls.length} VIDEO${videoUrls.length === 1 ? "" : "S"}`;
+                video.muted = true;
+                video.playsInline = true;
+                video.onended = () => {
+                    if (videoUrls.length === 1) playVideoAt(0);
+                    else {
+                        let next = -1;
+                        for (let step = 1; step <= videoUrls.length; step++) {
+                            const candidate = (activeVideoIndex + step) % videoUrls.length;
+                            if (!failedVideoIndexes.has(candidate)) { next = candidate; break; }
+                        }
+                        if (next >= 0) playVideoAt(next);
+                    }
+                };
+                video.onerror = () => {
+                    failedVideoIndexes.add(activeVideoIndex);
+                    let next = -1;
+                    for (let step = 1; step <= videoUrls.length; step++) {
+                        const candidate = (activeVideoIndex + step) % videoUrls.length;
+                        if (!failedVideoIndexes.has(candidate)) { next = candidate; break; }
+                    }
+                    if (next >= 0 && failedVideoIndexes.size < videoUrls.length) playVideoAt(next);
+                    else {
+                        video.pause(); video.hidden = true;
+                        if (fallback) fallback.hidden = false;
+                        if (videoEmpty) { videoEmpty.hidden = false; videoEmpty.querySelector("strong").textContent = "Preview unavailable"; }
+                        if (mediaCount) mediaCount.textContent = "PREVIEW UNAVAILABLE";
+                    }
+                };
+                videoUrls.forEach((url, index) => {
+                    const button = document.createElement("button");
+                    button.type = "button";
+                    button.className = "ae-video-chip";
+                    button.innerHTML = `<i class=\"fa-solid fa-play\"></i><span>Preview ${index + 1}</span>`;
+                    button.addEventListener("click", () => playVideoAt(index));
+                    playlist.appendChild(button);
+                });
+            } else {
+                if (video) video.hidden = true;
+                if (videoEmpty) videoEmpty.hidden = false;
+                if (fallback) fallback.hidden = false;
+                if (mediaCount) mediaCount.textContent = shots.length ? `${shots.length} SCREENSHOT${shots.length === 1 ? "" : "S"}` : "NO MEDIA ADDED";
+            }
+            shots.forEach((url, index) => {
+                const thumb = document.createElement("button");
+                thumb.type = "button";
+                thumb.className = "ae-screenshot-thumb";
+                const img = document.createElement("img");
+                img.src = url; img.alt = `${app.name || "App"} screenshot ${index + 1}`;
+                img.onerror = () => thumb.remove();
+                thumb.appendChild(img);
+                thumb.addEventListener("click", () => {
+                    if (fallbackImage) fallbackImage.src = url;
+                    if (video && !video.hidden) { video.pause(); video.hidden = true; }
+                    if (fallback) fallback.hidden = false;
+                    if (videoEmpty) videoEmpty.hidden = true;
+                    if (mediaCount) mediaCount.textContent = `SCREENSHOT ${index + 1}`;
+                    Array.from(screenshotRail.children).forEach(node => node.classList.remove("active"));
+                    thumb.classList.add("active");
+                });
+                screenshotRail.appendChild(thumb);
+            });
+            if (video) video.onplay = () => { if (video.hidden) return; if (fallback) fallback.hidden = true; };
+            const ratingSpec = document.getElementById("detailsRatingSpec");
+            if (ratingSpec) ratingSpec.textContent = String(app.rating ?? "New");
+            const compatibilityLine = document.getElementById("detailsCompatibilityLine");
+            if (compatibilityLine) compatibilityLine.textContent = app.android || "Compatibility not specified";
+            const versionLine = document.getElementById("detailsVersionLine");
+            if (versionLine) versionLine.textContent = app.version ? `Version ${app.version}` : "Version not listed";
+
             if (
                 app.apk &&
                 app.apk !== "#"
@@ -1124,9 +1061,12 @@
             }
 
             modal.scrollTop = 0;
+            const productPage = modal.querySelector(".ae-product-page");
+            if (productPage) productPage.scrollTop = 0;
             modal.classList.add("open");
             modal.setAttribute("aria-hidden", "false");
             document.body.classList.add("details-open");
+            if (videoUrls.length) window.requestAnimationFrame(() => playVideoAt(0));
 
         }
 
@@ -1942,7 +1882,160 @@
             return all;
         }
 
+        let aeFeaturedIndex = 0;
+        let aeFeaturedIdentity = "";
+
+        function appPreviewVideos(app) {
+            const raw = Array.isArray(app?.videos) ? app.videos :
+                (Array.isArray(app?.videoUrls) ? app.videoUrls : (app?.video || app?.trailerUrl ? [app.video || app.trailerUrl] : []));
+            return raw.map(value => String(value || "").trim()).filter(value => {
+                try {
+                    const url = new URL(value, window.location.href);
+                    return (url.protocol === "https:" || url.protocol === "http:") && /\.(mp4|webm|ogg)(?:$|[?#])/i.test(url.href);
+                } catch (_) { return false; }
+            });
+        }
+
+        function appShowcaseArtwork(app) {
+            return String(app?.detailsBackground || app?.screenshots?.[0] || app?.icon || "logo.png").trim() || "logo.png";
+        }
+
+        function renderFeaturedHub() {
+            const hub = document.getElementById("aeHomeShowcase");
+            if (!hub) return;
+            const title = document.getElementById("aeFeaturedTitle");
+            const description = document.getElementById("aeFeaturedDescription");
+            const artwork = document.getElementById("aeFeaturedArtwork");
+            const video = document.getElementById("aeFeaturedVideo");
+            const meta = document.getElementById("aeFeaturedMeta");
+            const selectors = document.getElementById("aeFeaturedSelectors");
+            const recommendedList = document.getElementById("aeRecommendedList");
+            const detailsButton = document.getElementById("aeFeaturedDetails");
+            if (!title || !description || !artwork || !video || !selectors || !recommendedList) return;
+
+            const games = (Array.isArray(manualCatalogApps) ? manualCatalogApps : [])
+                .filter(item => inferContentType(item) === "Games" && !item.external);
+            const isFeatured = item => item.featured === true || String(item.homepageSection || "").toLowerCase() === "featured";
+            const isRecommended = item => ["recommended", "trending"].includes(String(item.homepageSection || "").toLowerCase());
+            let featuredItems = games.filter(item => isFeatured(item));
+            if (!featuredItems.length) featuredItems = games.filter(item => appPreviewVideos(item).length);
+            if (!featuredItems.length) featuredItems = games.slice(0, 5);
+            featuredItems = featuredItems.slice(0, 6);
+
+            const current = featuredItems[Math.min(aeFeaturedIndex, Math.max(0, featuredItems.length - 1))] || null;
+            aeFeaturedIndex = current ? featuredItems.indexOf(current) : 0;
+            aeFeaturedIdentity = current ? String(current.id || current.name || "") : "";
+
+            if (!current) {
+                title.textContent = "Your next favourite starts here";
+                description.textContent = "Add a game in Admin, upload its MP4 or WebM gameplay preview, then mark it as Featured to bring this showcase to life.";
+                artwork.src = "logo.png";
+                artwork.hidden = false;
+                video.pause(); video.removeAttribute("src"); video.load(); video.hidden = true;
+                const liveBadge = hub.querySelector(".ae-video-live"); if (liveBadge) liveBadge.hidden = true;
+                if (meta) meta.innerHTML = '<span><i class="fa-solid fa-gamepad"></i> Game library</span><span><i class="fa-solid fa-video"></i> Admin-managed previews</span>';
+                detailsButton.disabled = true;
+                selectors.innerHTML = '<span class="ae-featured-empty">Set Content Type to Games, add a preview video, then select Featured in Admin.</span>';
+            } else {
+                const artUrl = appShowcaseArtwork(current);
+                artwork.hidden = false;
+                artwork.onerror = function () { this.onerror = null; this.src = "logo.png"; };
+                artwork.src = artUrl;
+                title.textContent = current.name || "Featured game";
+                description.textContent = current.description || "Explore the details, compatibility and available download for this featured game.";
+                const rating = current.rating ?? "New";
+                const size = current.size || "Size not listed";
+                if (meta) {
+                    meta.replaceChildren();
+                    [["fa-gamepad", current.category || "Game"], ["fa-star", String(rating)], ["fa-hard-drive", size]].forEach(([icon, text]) => {
+                        const span = document.createElement("span");
+                        const i = document.createElement("i"); i.className = `fa-solid ${icon}`;
+                        span.append(i, document.createTextNode(` ${text}`)); meta.appendChild(span);
+                    });
+                }
+                detailsButton.disabled = false;
+                detailsButton.onclick = () => openAppDetails(current);
+
+                const videos = appPreviewVideos(current);
+                const liveBadge = hub.querySelector(".ae-video-live"); if (liveBadge) liveBadge.hidden = !videos.length;
+                video.pause();
+                video.removeAttribute("src");
+                video.oncanplay = null;
+                video.onerror = null;
+                if (videos.length) {
+                    video.hidden = false;
+                    video.muted = true;
+                    video.loop = true;
+                    video.autoplay = true;
+                    video.playsInline = true;
+                    video.poster = artUrl;
+                    video.oncanplay = () => { artwork.hidden = true; };
+                    video.onerror = () => { video.hidden = true; artwork.hidden = false; };
+                    video.src = videos[0];
+                    video.load();
+                    const playResult = video.play();
+                    if (playResult && typeof playResult.catch === "function") playResult.catch(() => {});
+                } else {
+                    video.hidden = true;
+                    artwork.hidden = false;
+                }
+
+                selectors.replaceChildren();
+                if (featuredItems.length > 1) {
+                    featuredItems.forEach((item, index) => {
+                        const button = document.createElement("button");
+                        button.type = "button";
+                        button.className = `ae-featured-selector${item === current ? " active" : ""}`;
+                        button.setAttribute("aria-label", `Show ${item.name || "featured game"}`);
+                        button.setAttribute("aria-pressed", String(item === current));
+                        const image = document.createElement("img");
+                        image.src = appShowcaseArtwork(item); image.alt = ""; image.loading = "lazy";
+                        const copy = document.createElement("span");
+                        const strong = document.createElement("strong"); strong.textContent = item.name || "Game";
+                        const small = document.createElement("small"); small.textContent = index === 0 ? "FEATURED PICK" : "MORE TO EXPLORE";
+                        copy.append(strong, small); button.append(image, copy);
+                        button.addEventListener("click", () => { aeFeaturedIndex = index; renderFeaturedHub(); });
+                        selectors.appendChild(button);
+                    });
+                } else {
+                    const note = document.createElement("span");
+                    note.className = "ae-featured-empty";
+                    note.textContent = videos.length ? "Your featured gameplay preview loops automatically." : "Add a direct MP4 or WebM preview URL in Admin to show gameplay here.";
+                    selectors.appendChild(note);
+                }
+            }
+
+            const explicitRecommended = games.filter(item => isRecommended(item) && (!current || item.id !== current.id));
+            const fallbackRecommended = games.filter(item => !isFeatured(item) && (!current || item.id !== current.id));
+            const recommendedItems = (explicitRecommended.length ? explicitRecommended : fallbackRecommended).slice(0, 4);
+            recommendedList.replaceChildren();
+            if (!recommendedItems.length) {
+                const empty = document.createElement("div"); empty.className = "ae-recommended-empty";
+                const icon = document.createElement("i"); icon.className = "fa-solid fa-gamepad";
+                const strong = document.createElement("strong"); strong.textContent = "More games coming soon";
+                const span = document.createElement("span"); span.textContent = "Choose Recommended Games in Admin to curate this list.";
+                empty.append(icon, strong, span); recommendedList.appendChild(empty);
+            } else {
+                recommendedItems.forEach(item => {
+                    const button = document.createElement("button");
+                    button.type = "button";
+                    button.className = "ae-recommended-item";
+                    button.addEventListener("click", () => openAppDetails(item));
+                    const image = document.createElement("img");
+                    image.src = appShowcaseArtwork(item); image.alt = ""; image.loading = "lazy";
+                    image.onerror = function () { this.onerror = null; this.src = item.icon || "logo.png"; };
+                    const copy = document.createElement("span"); copy.className = "ae-recommended-copy";
+                    const name = document.createElement("strong"); name.textContent = item.name || "Untitled game";
+                    const sub = document.createElement("small"); sub.textContent = `${item.developer || "AppExio game"} · ${item.size || "Size not listed"}`;
+                    copy.append(name, sub);
+                    const arrow = document.createElement("i"); arrow.className = "fa-solid fa-chevron-right ae-recommended-arrow";
+                    button.append(image, copy, arrow); recommendedList.appendChild(button);
+                });
+            }
+        }
+
         function renderCurrentCatalog() {
+            renderFeaturedHub();
             const grid = document.getElementById("gamesGrid");
             if (!grid) return;
             const input = document.getElementById("searchInput");
@@ -1992,11 +2085,12 @@
                 externalSearchLoading = false;
                 renderExternalSearchLoader();
             }
-            document.querySelectorAll(".sidebar-link[data-catalog-view], .category[data-catalog-view]").forEach(el => {
+            document.querySelectorAll(".sidebar-link[data-catalog-view], .top-nav-link[data-catalog-view], .category[data-catalog-view]").forEach(el => {
                 const active = el.dataset.catalogView === view;
                 el.classList.toggle("selected", active);
                 el.classList.toggle("active", active);
                 if (el.matches(".sidebar-link")) el.setAttribute("aria-current", active ? "page" : "false");
+                if (el.matches(".category")) el.setAttribute("aria-pressed", String(active));
             });
             renderCurrentCatalog();
             // If the visitor returns to For You with a search already entered,
@@ -2111,7 +2205,7 @@
         }
 
         function setupCatalogNavigation() {
-            const links = document.querySelectorAll(".sidebar-link, .category");
+            const links = document.querySelectorAll(".sidebar-link[data-catalog-view], .top-nav-link[data-catalog-view], .category[data-catalog-view]");
             links.forEach(el => {
                 const label = String(el.textContent || "").trim().toLowerCase();
                 let view = null;
@@ -2119,11 +2213,11 @@
                     if (label.includes("games")) view = "games";
                     else if (label.includes("android")) view = "apps";
                     else if (label.includes("pc")) view = "pc-software";
-                } else if (el.classList.contains("sidebar-link")) {
-                    if (label.includes("for you")) view = "for-you";
+                } else if (el.classList.contains("sidebar-link") || el.classList.contains("top-nav-link")) {
+                    if (label.includes("for you") || label.includes("store")) view = "for-you";
                     else if (label === "apps") view = "apps";
                     else if (label.includes("games")) view = "games";
-                    else if (label.includes("pc software")) view = "pc-software";
+                    else if (label.includes("pc software") || label.includes("software")) view = "pc-software";
                     else if (label.includes("latest releases")) view = "latest";
                 }
                 if (!view) return;
@@ -2133,7 +2227,14 @@
                 el.addEventListener("click", event => {
                     event.preventDefault();
                     setCatalogView(view);
-                    if (window.innerWidth < 760) document.getElementById("games")?.scrollIntoView({ behavior: "smooth", block: "start" });
+                    // Keep the filtered catalog in view on desktop and mobile,
+                    // even when the visitor has scrolled far down the storefront.
+                    window.requestAnimationFrame(() => {
+                        document.getElementById("games")?.scrollIntoView({
+                            behavior: window.matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth",
+                            block: "start"
+                        });
+                    });
                 });
             });
 
@@ -2146,6 +2247,20 @@
                 });
             });
             setupExplorePage();
+            document.querySelectorAll("[data-scroll-target]").forEach(link => {
+                if (link.dataset.scrollBound === "true") return;
+                link.dataset.scrollBound = "true";
+                link.addEventListener("click", event => {
+                    event.preventDefault();
+                    document.getElementById(link.dataset.scrollTarget)?.scrollIntoView({ behavior: "smooth", block: "start" });
+                    document.body.classList.remove("sidebar-open");
+                });
+            });
+            document.querySelectorAll("[data-open-explore]").forEach(link => {
+                if (link.dataset.exploreBound === "true") return;
+                link.dataset.exploreBound = "true";
+                link.addEventListener("click", event => { event.preventDefault(); openExplorePage(); document.body.classList.remove("sidebar-open"); });
+            });
             setCatalogView(activeCatalogView);
         }
 
@@ -3416,35 +3531,94 @@ main{max-width:none;margin:0 0 0 232px;padding:0 36px}.store-head{padding:32px 0
   .app-card { grid-template-columns: 56px minmax(0,1fr) !important; min-height: 94px !important; padding: 11px !important; column-gap: 11px !important; }
   .app-icon { width: 56px !important; height: 56px !important; }
 }
+
+
+/* AppExio storefront navigation refinements */
+.category-strip {
+    display:flex;
+    flex-wrap:wrap;
+    align-items:center;
+    gap:9px;
+    margin:0 0 17px;
+    padding:13px 0 17px;
+    border-top:1px solid rgba(145,190,220,.11);
+    border-bottom:1px solid rgba(145,190,220,.11);
+}
+.category-strip .category {
+    appearance:none;
+    -webkit-appearance:none;
+    display:inline-flex;
+    align-items:center;
+    justify-content:center;
+    min-height:36px;
+    padding:9px 15px;
+    border:1px solid rgba(145,190,220,.18);
+    border-radius:4px;
+    background:rgba(5,17,27,.56);
+    color:#a9c2d3;
+    font-family:inherit;
+    font-size:11px;
+    font-weight:750;
+    letter-spacing:.15px;
+    line-height:1;
+    cursor:pointer;
+    transition:background .18s ease,border-color .18s ease,color .18s ease,transform .18s ease;
+}
+.category-strip .category:hover,
+.category-strip .category.active,
+.category-strip .category.selected {
+    color:#f3f9ff;
+    border-color:rgba(102,192,244,.52);
+    background:linear-gradient(180deg,rgba(39,91,126,.62),rgba(22,56,80,.68));
+    box-shadow:inset 0 1px 0 rgba(255,255,255,.07),0 4px 14px rgba(0,0,0,.14);
+}
+.category-strip .category:focus-visible {
+    outline:2px solid #66c0f4;
+    outline-offset:3px;
+}
+#games { scroll-margin-top:90px; }
+@media (max-width:600px) {
+    .category-strip { gap:7px; padding:11px 0 14px; }
+    .category-strip .category { min-height:34px; padding:8px 11px; font-size:10px; }
+    #games { scroll-margin-top:112px; }
+}
 </style>
+
+
 
 </head>
 <body>
 <header class="header"><nav class="nav">
-<a href="index.html" class="logo"><div class="logo-icon"><img src="favicon.png" alt="AppExio"></div>APP<span>EXIO</span></a>
+<a href="index.html" class="logo" aria-label="AppExio Store home"><div class="logo-icon"><img src="favicon.png" alt=""></div><span class="logo-word">APP<span>EXIO</span></span></a>
 
-<div class="search-wrapper"><div class="nav-search"><i class="fa-solid fa-magnifying-glass"></i><input id="searchInput" type="text" placeholder="Search apps, games & software..."></div></div>
-<a href="user-console-jdcbuydbcduiebceuif9wbcephpppepdwejnwdicijwbedijcnwjenoi.html" class="archive-upload-btn">
-    <i class="fa-solid fa-upload"></i>
+<nav class="top-store-nav" aria-label="Quick links">
+  <a class="top-nav-link" href="https://appexiodev.github.io/contact.html">CONTACT</a>
+  <a class="top-nav-link" href="about-us.html">ABOUT</a>
+  <a class="top-nav-link" data-catalog-view="latest" href="#games">LATEST RELEASES</a>
+</nav>
+
+<div class="search-wrapper"><label class="nav-search" for="searchInput"><i class="fa-solid fa-magnifying-glass" aria-hidden="true"></i><input id="searchInput" type="search" autocomplete="off" placeholder="Search the store..."></label></div>
+<a href="user-console-jdcbuydbcduiebceuif9wbcephpppepdwejnwdicijwbedijcnwjenoi.html" class="archive-upload-btn" aria-label="Upload a new app or game">
+    <i class="fa-solid fa-cloud-arrow-up" aria-hidden="true"></i>
     <span>UPLOAD</span>
 </a>
-<button class="mobile-menu"><i class="fa-solid fa-bars"></i></button>
 </nav></header>
+<button class="mobile-menu" type="button" aria-label="Open navigation" aria-expanded="false"><i class="fa-solid fa-chevron-right" aria-hidden="true"></i></button>
 
 <aside class="store-sidebar" aria-label="Store navigation">
-  <a class="sidebar-brand" href="index.html" aria-label="AppExio home"><img src="favicon.png" alt="AppExio logo"><span>APP<span class="sidebar-brand-accent">EXIO</span></span></a>
-  <a class="sidebar-link selected" data-catalog-view="for-you" href="#games"><i class="fa-solid fa-house"></i><span>For you</span></a>
-  <a class="sidebar-link" data-catalog-view="apps" href="#games"><i class="fa-solid fa-mobile-screen-button"></i><span>Apps</span></a>
-  <a class="sidebar-link" data-catalog-view="games" href="#games"><i class="fa-solid fa-gamepad"></i><span>Games</span></a>
-  <a class="sidebar-link" data-catalog-view="pc-software" href="#games"><i class="fa-solid fa-laptop"></i><span>PC software</span></a>
-  <a class="sidebar-link" href="https://appexio.github.io/AppExio.apk"><i class="fa-solid fa-download"></i><span>Old-version.apk</span></a>
-  <div class="sidebar-divider"></div><p class="sidebar-caption">DISCOVER APPEXIO</p>
-  <a class="sidebar-link" data-catalog-view="latest" href="#games"><i class="fa-solid fa-fire"></i><span>Latest releases</span></a>
-  <a class="sidebar-link" href="about-us.html"><i class="fa-regular fa-circle-question"></i><span>About</span></a>
-  <a class="sidebar-link" href="https://appexiodev.github.io/contact.html">
-    <i class="fa-regular fa-address-book"></i>
-    <span>Contact</span>
-</a>
+  <a class="sidebar-brand" href="index.html" aria-label="AppExio home"><img src="favicon.png" alt=""><span>APP<span class="sidebar-brand-accent">EXIO</span></span></a>
+
+  <p class="sidebar-caption">STORE</p>
+  <a class="sidebar-link selected" data-catalog-view="for-you" href="#games" title="For you" aria-current="page"><i class="fa-solid fa-house" aria-hidden="true"></i><span>For you</span></a>
+  <a class="sidebar-link" data-catalog-view="games" href="#games" title="Games"><i class="fa-solid fa-gamepad" aria-hidden="true"></i><span>Games</span></a>
+  <a class="sidebar-link" data-catalog-view="apps" href="#games" title="Apps"><i class="fa-solid fa-mobile-screen-button" aria-hidden="true"></i><span>Apps</span></a>
+  <a class="sidebar-link" data-catalog-view="pc-software" href="#games" title="PC software"><i class="fa-solid fa-desktop" aria-hidden="true"></i><span>PC software</span></a>
+
+  <div class="sidebar-divider"></div>
+  <p class="sidebar-caption">APPEXIO</p>
+  <a class="sidebar-link" href="https://appexio.github.io/AppExio.apk" title="Get the AppExio app"><i class="fa-brands fa-android" aria-hidden="true"></i><span>Get AppExio</span></a>
+  <a class="sidebar-link" href="about-us.html" title="About AppExio"><i class="fa-regular fa-circle-question" aria-hidden="true"></i><span>About</span></a>
+  <a class="sidebar-link" href="https://appexiodev.github.io/contact.html" title="Contact AppExio"><i class="fa-regular fa-envelope" aria-hidden="true"></i><span>Contact</span></a>
 </aside>
 <div class="sidebar-overlay" aria-hidden="true"></div>
 <nav class="mobile-bottom-nav" aria-label="Main categories">
@@ -3455,7 +3629,55 @@ main{max-width:none;margin:0 0 0 232px;padding:0 36px}.store-head{padding:32px 0
 </nav>
 <main>
 <section class="store-head"><div class="store-title-row"><div><div class="eyebrow">APPEXIO • DIGITAL MARKETPLACE</div><h1 class="store-title">Find something <span>worth downloading.</span></h1><p class="store-sub">Apps, games and PC software — organized in one place.</p></div></div></section>
-<div class="category-strip"><span class="category">Pc Apps</span><span class="category">Games</span><span class="category">Android Apps</span><span class="category">PC software</span></div>
+<section class="ae-home-showcase" id="aeHomeShowcase" aria-label="Featured and recommended games">
+  <div class="ae-showcase-heading">
+    <div>
+      <div class="ae-showcase-kicker"><i class="fa-solid fa-sparkles" aria-hidden="true"></i> THE APPEXIO STORE</div>
+      <h2>Featured &amp; recommended</h2>
+      <p>Watch the latest game previews, then find your next favourite.</p>
+    </div>
+    <span class="ae-showcase-live"><i></i> CURATED FOR YOU</span>
+  </div>
+
+  <div class="ae-showcase-layout">
+    <article class="ae-featured-stage" aria-live="polite">
+      <div class="ae-featured-media">
+        <img id="aeFeaturedArtwork" class="ae-featured-artwork" src="logo.png" alt="Featured game artwork">
+        <video id="aeFeaturedVideo" class="ae-featured-video" muted autoplay loop playsinline preload="metadata" aria-label="Featured game video preview"></video>
+        <div class="ae-featured-shade"></div>
+        <div class="ae-featured-copy">
+          <span class="ae-featured-label"><i class="fa-solid fa-star" aria-hidden="true"></i> FEATURED GAME</span>
+          <h3 id="aeFeaturedTitle">Your next favourite starts here</h3>
+          <p id="aeFeaturedDescription">Featured game trailers and gameplay previews selected by the AppExio team.</p>
+          <div class="ae-featured-meta" id="aeFeaturedMeta"><span><i class="fa-solid fa-gamepad"></i> Games</span><span><i class="fa-solid fa-star"></i> Curated picks</span></div>
+          <button class="ae-featured-cta" id="aeFeaturedDetails" type="button"><i class="fa-solid fa-circle-info"></i> View game details <i class="fa-solid fa-arrow-right"></i></button>
+        </div>
+        <span class="ae-video-live"><i></i> GAMEPLAY PREVIEW</span>
+      </div>
+      <div class="ae-featured-selectors" id="aeFeaturedSelectors" aria-label="Choose featured game">
+        <span class="ae-featured-empty">Featured games selected in the Admin Panel will appear here.</span>
+      </div>
+    </article>
+
+    <aside class="ae-recommended-panel" aria-label="Recommended games">
+      <div class="ae-recommended-heading">
+        <div><span>HAND-PICKED FOR YOU</span><h3>Recommended</h3></div>
+        <i class="fa-solid fa-bolt" aria-hidden="true"></i>
+      </div>
+      <div class="ae-recommended-list" id="aeRecommendedList">
+        <div class="ae-recommended-empty"><i class="fa-solid fa-gamepad"></i><strong>Recommendations are loading</strong><span>Add games and choose Recommended Games in the admin panel.</span></div>
+      </div>
+      <a class="ae-recommended-all" href="#games">Browse all games <i class="fa-solid fa-arrow-right"></i></a>
+    </aside>
+  </div>
+
+  <div class="category-strip" role="group" aria-label="Browse AppExio categories">
+    <button type="button" class="category" data-catalog-view="pc-software" aria-pressed="false">PC Apps</button>
+    <button type="button" class="category" data-catalog-view="games" aria-pressed="false">Games</button>
+    <button type="button" class="category" data-catalog-view="apps" aria-pressed="false">Android Apps</button>
+    <button type="button" class="category" data-catalog-view="pc-software" aria-pressed="false">PC Software</button>
+  </div>
+</section>
 <section class="section" id="games"><div class="section-header"><div class="section-title"><h2>Latest apps & games</h2><p>Freshly added to the AppExio library</p></div><a href="#explore" class="view-all">Explore all <i class="fa-solid fa-arrow-right"></i></a></div><div id="autoCatalogStatus" class="auto-catalog-status" role="status" aria-live="polite">Loading apps added by AppExio…</div><div class="catalog-note">For You includes your AppExio library and results from connected public app and software catalogs.</div><div class="apps-grid" id="gamesGrid"><div class="loading-state"><i class="fa-solid fa-spinner fa-spin"></i><span>Loading apps & games...</span></div></div></section>
 
 <section class="section"><div class="section-header"><div class="section-title"><h2>Built for discovery</h2><p>A cleaner way to browse your software library</p></div></div><div class="info-row"><div class="info-card"><i class="fa-solid fa-layer-group"></i><h3>Everything together</h3><p>Android apps, games and PC software organized in one modern marketplace.</p></div><div class="info-card"><i class="fa-solid fa-bolt"></i><h3>Fresh additions</h3><p>New releases appear directly in the library so the latest content is easy to find.</p></div><div class="info-card"><i class="fa-solid fa-magnifying-glass"></i><h3>Fast discovery</h3><p>Search through applications and software without unnecessary pages or clutter.</p></div></div></section>
@@ -3485,45 +3707,97 @@ main{max-width:none;margin:0 0 0 232px;padding:0 36px}.store-head{padding:32px 0
   <div id="aeExploreGrid" class="ae-explore-grid"></div>
 </section>
 
-<!-- FULL-PAGE APP / SOFTWARE PRODUCT DETAILS -->
+<!-- STEAM-INSPIRED APP / GAME PRODUCT PAGE -->
 <div class="app-details-modal" id="appDetailsModal" aria-hidden="true">
   <div class="ae-product-page" role="dialog" aria-modal="true" aria-labelledby="detailsName">
-    <div class="ae-product-background" id="detailsBackgroundLayer" hidden aria-hidden="true"><img id="detailsBackgroundImage" alt=""><div class="ae-product-background-shade"></div></div>
+    <div class="ae-product-background" id="detailsBackgroundLayer" hidden aria-hidden="true">
+      <img id="detailsBackgroundImage" alt="">
+      <div class="ae-product-background-shade"></div>
+    </div>
     <header class="ae-product-topbar">
       <button type="button" class="details-close" id="detailsClose" aria-label="Back to AppExio"><i class="fa-solid fa-arrow-left"></i><span>Back to store</span></button>
       <a class="ae-product-brand" href="index.html"><img src="favicon.png" alt="">AppExio</a>
-      <span class="ae-product-toplabel">APP & SOFTWARE DETAILS</span>
+      <span class="ae-product-toplabel">STORE / PRODUCT DETAILS</span>
     </header>
+
     <main class="ae-product-main">
-      <section class="ae-product-hero">
-        <div class="ae-product-orb ae-product-orb-one"></div><div class="ae-product-orb ae-product-orb-two"></div>
+      <section class="ae-product-heading">
         <div class="ae-product-identity">
           <img id="detailsIcon" class="details-icon" alt="App icon">
           <div class="details-title">
             <div class="ae-product-kicker">APPEXIO STORE LISTING</div>
             <h1 id="detailsName">App name</h1>
             <div id="detailsDeveloper" class="details-developer">Developer</div>
-            <div class="details-badges"><span id="detailsCategory" class="details-badge">Apps</span><span id="detailsRating" class="details-badge rating"></span><span id="detailsDownloads" class="details-badge"></span></div>
+            <div class="details-badges">
+              <span id="detailsCategory" class="details-badge">Apps</span>
+              <span id="detailsRating" class="details-badge rating"></span>
+              <span id="detailsDownloads" class="details-badge"></span>
+              <span id="detailsFeatured" class="details-badge featured-badge" style="display:none"><i class="fa-solid fa-star"></i> Featured</span>
+            </div>
           </div>
         </div>
-        <div class="ae-product-hero-action"><a id="detailsDownload" class="details-download" target="_blank" rel="noopener noreferrer"><i class="fa-solid fa-download"></i> Download</a><span class="ae-safe-note"><i class="fa-solid fa-shield-halved"></i> Check publisher and compatibility before installing</span></div>
+        <div class="ae-product-hero-action">
+          <a id="detailsDownload" class="details-download" target="_blank" rel="noopener noreferrer"><i class="fa-solid fa-download"></i> Install now</a>
+          <span class="ae-safe-note"><i class="fa-solid fa-shield-halved"></i> Review publisher and compatibility before installing</span>
+        </div>
       </section>
-      <div class="ae-product-content">
-        <section class="ae-product-overview">
-          <div class="ae-product-stats">
-            <div class="details-stat"><strong id="detailsVersion">—</strong><span>Version</span></div>
-            <div class="details-stat"><strong id="detailsSize">—</strong><span>Download size</span></div>
-            <div class="details-stat"><strong id="detailsPlatform">—</strong><span>Available on</span></div>
+
+      <section class="ae-product-showcase">
+        <div class="ae-product-media-column">
+          <div class="ae-media-label"><span>GAMEPLAY & MEDIA</span><span id="detailsMediaCount">MEDIA PREVIEW</span></div>
+          <div class="ae-video-stage" id="detailsVideoStage">
+            <video id="detailsVideo" class="ae-product-video" controls autoplay muted playsinline preload="metadata"></video>
+            <div id="detailsMediaFallback" class="ae-media-fallback" hidden>
+              <img id="detailsMediaFallbackImage" alt="">
+              <span><i class="fa-regular fa-images"></i> Preview images</span>
+            </div>
+            <div id="detailsVideoEmpty" class="ae-video-empty" hidden>
+              <i class="fa-solid fa-clapperboard"></i>
+              <strong>Media coming soon</strong>
+              <span>Add MP4 or WebM preview links from the AppExio admin panel.</span>
+            </div>
           </div>
+          <div id="detailsVideoPlaylist" class="ae-video-playlist" aria-label="Video previews"></div>
+          <div id="detailsScreenshotRail" class="ae-screenshot-rail" aria-label="Screenshot thumbnails"></div>
+        </div>
+
+        <aside class="ae-product-spec-column">
+          <div class="ae-spec-cover" id="detailsSpecCover">
+            <img id="detailsSpecCoverImage" alt="">
+            <div class="ae-spec-cover-shade"></div>
+            <div class="ae-spec-cover-caption"><span>NOW AVAILABLE ON APPEXIO</span><strong id="detailsCoverName">App name</strong></div>
+          </div>
+          <div class="ae-spec-panel">
+            <div class="ae-spec-panel-heading"><i class="fa-solid fa-circle-info"></i><span>Product information</span></div>
+            <div class="ae-product-stats">
+              <div class="details-stat"><span>VERSION</span><strong id="detailsVersion">—</strong></div>
+              <div class="details-stat"><span>DOWNLOAD SIZE</span><strong id="detailsSize">—</strong></div>
+              <div class="details-stat"><span>COMPATIBILITY</span><strong id="detailsPlatform">—</strong></div>
+              <div class="details-stat"><span>RATING</span><strong id="detailsRatingSpec">—</strong></div>
+            </div>
+            <div class="ae-spec-footnote"><i class="fa-solid fa-circle-check"></i><span>Check the listed platform and version before downloading.</span></div>
+          </div>
+          <div class="ae-aside-card">
+            <div class="ae-aside-card-title"><i class="fa-solid fa-cloud-arrow-down"></i> Download information</div>
+            <p>Use the install button above to open the publisher-provided file or official source. Availability may depend on your device and region.</p>
+            <div class="ae-aside-line"><i class="fa-solid fa-laptop-mobile"></i><span id="detailsCompatibilityLine">Compatibility details are listed above</span></div>
+            <div class="ae-aside-line"><i class="fa-solid fa-code-branch"></i><span id="detailsVersionLine">Version details are listed above</span></div>
+          </div>
+        </aside>
+      </section>
+
+      <section class="ae-product-lower">
+        <div class="ae-product-overview">
           <section class="details-section" id="detailsDescriptionSection"><div class="ae-section-heading"><span>01</span><h2>About this app</h2></div><p id="detailsDescription"></p></section>
           <section class="details-section" id="detailsWhatsNewSection"><div class="ae-section-heading"><span>02</span><h2>What's new</h2></div><p id="detailsWhatsNew"></p></section>
           <section class="details-section ae-tags-section"><div class="ae-section-heading"><span>03</span><h2>Discover more</h2></div><div id="detailsTags" class="details-tags"></div></section>
-        </section>
-        <aside class="ae-product-aside">
-          <div class="ae-aside-card"><div class="ae-aside-icon"><i class="fa-solid fa-circle-check"></i></div><h3>Before you install</h3><p>Review the publisher, platform and download source. External catalog listings take you to their official publisher or package page.</p><div class="ae-aside-line"><i class="fa-solid fa-globe"></i><span>Publisher / source details</span></div><div class="ae-aside-line"><i class="fa-solid fa-laptop-mobile"></i><span>Platform compatibility</span></div></div>
-        </aside>
-        <section class="details-section ae-screenshots-section" id="detailsScreenshotsSection"><div class="ae-section-heading"><span>04</span><h2>Screenshots & previews</h2></div><div id="detailsScreenshots" class="details-screenshots"></div></section>
-      </div>
+        </div>
+      </section>
+
+      <section class="details-section ae-screenshots-section" id="detailsScreenshotsSection">
+        <div class="ae-section-heading"><span>04</span><h2>Screenshots & artwork</h2></div>
+        <div id="detailsScreenshots" class="details-screenshots"></div>
+      </section>
     </main>
     <footer class="ae-product-footer"><span>AppExio · Discover more of what you can do.</span><span>Publisher details and download availability may change.</span></footer>
   </div>
@@ -3540,6 +3814,8 @@ main{max-width:none;margin:0 0 0 232px;padding:0 36px}.store-head{padding:32px 0
         detailsModal.classList.remove("open");
         detailsModal.setAttribute("aria-hidden", "true");
         document.body.classList.remove("details-open");
+        const video = document.getElementById("detailsVideo");
+        if (video) { video.pause(); video.removeAttribute("src"); video.load(); }
     }
     detailsClose.addEventListener("click", function (event) {
         event.preventDefault();
@@ -3608,7 +3884,7 @@ main{max-width:none;margin:0 0 0 232px;padding:0 36px}.store-head{padding:32px 0
   }, { passive: true });
 
   function syncActive() {
-    const selected = document.querySelector('.store-sidebar .sidebar-link.selected[data-catalog-view]');
+    const selected = document.querySelector('.store-sidebar .sidebar-link.selected[data-catalog-view]') || document.querySelector('.top-nav-link.active[data-catalog-view]');
     const view = selected?.dataset.catalogView || 'for-you';
     bottomLinks.forEach(link => {
       const active = link.dataset.catalogView === view;
@@ -4082,6 +4358,363 @@ body { min-width: 0 !important; }
 
 @media (prefers-reduced-motion: reduce) {
   .app-card .app-hover-preview { transition: none !important; }
+}
+
+/* Featured storefront hero and artwork-led Steam-style library cards. */
+.steam-spotlight{position:relative;isolation:isolate;display:grid;grid-template-columns:minmax(0,1.05fr) minmax(280px,.95fr);align-items:center;gap:18px;min-height:255px;margin:0 0 23px;padding:26px 34px;overflow:hidden;border:1px solid rgba(102,192,244,.2);border-radius:4px;background:linear-gradient(112deg,#1b3448 0%,#142838 54%,#10202d 100%);box-shadow:0 16px 38px rgba(0,0,0,.22)}.steam-spotlight:before{content:"";position:absolute;z-index:-1;inset:0;background:radial-gradient(ellipse at 74% 38%,rgba(32,139,200,.3),transparent 45%),linear-gradient(90deg,rgba(11,22,32,.15),transparent 70%)}.steam-spotlight-copy{position:relative;z-index:3;max-width:570px}.steam-spotlight-kicker{display:inline-flex;align-items:center;gap:7px;color:#8bd3ff;font-size:8px;font-weight:850;letter-spacing:1.8px}.steam-spotlight-kicker i{font-size:9px}.steam-spotlight h2{margin:11px 0 8px;color:#f4f8fb;font-size:clamp(25px,3vw,38px);line-height:1.08;letter-spacing:-1.2px}.steam-spotlight h2 span{color:#8bd3ff}.steam-spotlight p{max-width:460px;color:#a9bfce;font-size:11px;line-height:1.75}.steam-spotlight-button{display:inline-flex;align-items:center;gap:10px;margin-top:16px;padding:10px 15px;border:1px solid rgba(151,219,255,.4);border-radius:3px;background:linear-gradient(180deg,#3d8bb9,#215c83);color:#fff;font-size:10px;font-weight:800;transition:filter .2s,transform .2s}.steam-spotlight-button:hover{filter:brightness(1.12);transform:translateY(-2px)}.steam-spotlight-foot{display:flex;flex-wrap:wrap;gap:16px;margin-top:18px;color:#829caf;font-size:8px;font-weight:750;letter-spacing:.4px}.steam-spotlight-foot span{display:inline-flex;align-items:center;gap:6px}.steam-spotlight-foot i{color:#66c0f4}.steam-spotlight-art{position:relative;min-height:190px;display:flex;align-items:center;justify-content:center;perspective:900px}.steam-art-orbit{position:absolute;border:1px solid rgba(116,197,241,.2);border-radius:50%;transform:rotate(-24deg)}.steam-art-orbit-one{width:320px;height:130px}.steam-art-orbit-two{width:250px;height:95px;transform:rotate(43deg)}.steam-art-panel{position:absolute;display:grid;place-items:center;border:1px solid rgba(180,226,250,.25);border-radius:8px;box-shadow:0 22px 50px rgba(0,0,0,.35);transform-style:preserve-3d}.steam-art-panel-back{width:125px;height:145px;right:28%;top:12px;transform:rotate(13deg);background:linear-gradient(145deg,#2a617f,#15364c);color:#9cdfff;font-size:45px}.steam-art-panel-mid{width:138px;height:156px;right:15%;top:24px;transform:rotate(-10deg);background:linear-gradient(145deg,#325a77,#152f46);color:#c7eaff;font-size:49px}.steam-art-panel-front{width:125px;height:150px;right:35%;top:26px;transform:rotate(-3deg);display:flex;flex-direction:column;gap:8px;background:linear-gradient(155deg,#214d68,#102333);color:#d8f1ff;font-size:9px;font-weight:900;letter-spacing:2px}.steam-art-panel-front img{width:62px;height:62px;object-fit:cover;border-radius:13px;box-shadow:0 8px 20px rgba(0,0,0,.3)}.steam-art-glow{position:absolute;width:200px;height:100px;right:24%;bottom:0;border-radius:50%;background:rgba(37,154,218,.2);filter:blur(35px);z-index:-1}
+.app-card{min-height:275px!important;padding:14px!important}.app-cover-art{display:block!important;width:calc(100% + 28px)!important;height:112px!important;flex:0 0 112px!important;max-width:none!important;margin:-14px -14px 11px!important;object-fit:cover!important;object-position:center 35%!important;background:linear-gradient(120deg,#203b4f,#0d1b27)!important;border:0!important;border-bottom:1px solid rgba(190,215,235,.12)!important}.app-icon{width:48px!important;height:48px!important;margin:-34px 0 8px!important;position:relative!important;z-index:1!important;border:3px solid #192d3c!important;border-radius:6px!important}.app-name{font-size:12px!important}.app-meta{padding-top:8px!important}.ae-explore-grid .app-card{min-height:275px!important}
+@media(max-width:700px){.steam-spotlight{grid-template-columns:1fr;min-height:0;margin-bottom:16px;padding:21px 18px}.steam-spotlight-art{display:none}.steam-spotlight h2{font-size:25px}.steam-spotlight-foot{gap:10px;margin-top:13px}.app-cover-art{display:none!important}.app-card{min-height:92px!important;padding:11px 12px!important}.app-icon{width:62px!important;height:62px!important;margin:0!important;border:1px solid rgba(190,215,235,.14)!important;border-radius:6px!important}.app-meta{padding-top:0!important}.app-name{font-size:12px!important}}
+@media(min-width:701px) and (max-width:900px){.apps-grid{grid-template-columns:repeat(2,minmax(0,1fr))!important}.steam-spotlight-art{opacity:.8}}
+.featured-badge[style*="display: none"]{display:none!important}.ae-product-hero-action .details-download[style*="display: none"]{display:none!important}
+</style>
+
+<style id="appexio-steam-store-redesign">
+/* APPEXIO / STEAM-INSPIRED STORE SYSTEM */
+:root{color-scheme:dark;--bg:#101923;--surface:#172532;--surface2:#1b2c3a;--line:rgba(190,215,235,.13);--text:#e6eef5;--muted:#9aafbf;--brand:#66c0f4;--brand2:#1a9fff;--green:#8bc53f;--ae-accent:#66c0f4;--ae-accent-soft:rgba(102,192,244,.14);--ae-ink:#e6eef5;--ae-muted:#9aafbf;--ae-border:rgba(190,215,235,.14)}
+html,body{width:100%;max-width:100%;overflow-x:hidden!important;background:#101923!important;color:#e6eef5!important}body{font-family:Inter,Arial,sans-serif;line-height:1.55;-webkit-font-smoothing:antialiased}::selection{background:rgba(102,192,244,.35);color:white}
+.header{height:76px;background:rgba(23,32,42,.97)!important;border-bottom:1px solid rgba(102,192,244,.14)!important;box-shadow:0 7px 28px rgba(0,0,0,.24)!important;backdrop-filter:blur(18px)}.nav{max-width:none;padding:0 clamp(16px,3vw,42px);gap:24px}.logo,.footer-brand .logo{color:#e6eef5!important;font-size:20px;letter-spacing:-.65px}.logo span{color:#66c0f4!important}.logo-icon{width:39px;height:39px;border-radius:9px;background:#24384a!important;border:1px solid rgba(102,192,244,.2);overflow:hidden}.logo-icon img{object-fit:cover}.nav-search{width:min(560px,48vw);height:44px;background:#0f1923!important;border:1px solid rgba(190,215,235,.13)!important;border-radius:5px!important;box-shadow:inset 0 1px 2px rgba(0,0,0,.25)}.nav-search:focus-within{border-color:#66c0f4!important;box-shadow:0 0 0 2px rgba(102,192,244,.12)!important}.nav-search input{color:#e6eef5!important;font-size:13px}.nav-search input::placeholder,.nav-search i{color:#7f97a8!important}.archive-upload-btn,.archive-upload-btn:visited{border:1px solid rgba(102,192,244,.36)!important;border-radius:4px!important;background:linear-gradient(180deg,#2a658d,#174366)!important;color:#eaf7ff!important;padding:10px 14px!important;font-size:11px!important;letter-spacing:.45px;box-shadow:0 3px 10px rgba(0,0,0,.18)}.archive-upload-btn i,.archive-upload-btn span{color:#eaf7ff!important}.archive-upload-btn:hover{background:linear-gradient(180deg,#347ca8,#1d5278)!important}
+.store-sidebar{top:76px!important;width:220px!important;padding:23px 12px!important;background:#101923!important;border-right:1px solid rgba(190,215,235,.11)!important;box-shadow:8px 0 25px rgba(0,0,0,.12)}.sidebar-brand{display:flex!important;align-items:center;gap:11px;margin:0 5px 22px!important;padding:4px 10px 17px!important;border-bottom:1px solid rgba(190,215,235,.13)!important;color:#e6eef5!important;font-size:17px;font-weight:850}.sidebar-brand img{width:37px;height:37px;border-radius:9px}.sidebar-brand-accent{color:#66c0f4!important}.sidebar-link{display:flex!important;align-items:center;gap:14px;min-height:44px;margin:4px 0!important;padding:0 13px!important;border-radius:4px!important;color:#a9bac8!important;font-size:12px!important;font-weight:650!important;transition:background .18s,color .18s}.sidebar-link i{width:19px!important;color:#7793a8!important;font-size:14px!important}.sidebar-link:hover,.sidebar-link.selected{background:linear-gradient(90deg,rgba(102,192,244,.2),rgba(102,192,244,.04))!important;color:#fff!important;box-shadow:inset 3px 0 #66c0f4}.sidebar-link:hover i,.sidebar-link.selected i{color:#8bd3ff!important}.sidebar-divider{background:rgba(190,215,235,.12)!important}.sidebar-caption{color:#668095!important;font-size:9px!important;letter-spacing:1.2px!important}
+main{max-width:none!important;margin:0 0 0 220px!important;padding:0 clamp(22px,3vw,48px)!important;color:#e6eef5!important}.store-head{position:relative;padding:44px 0 22px!important}.store-head:before{content:"";position:absolute;z-index:-1;inset:0 -30px 0 -30px;background:radial-gradient(ellipse at 75% 0%,rgba(24,117,173,.15),transparent 48%)}.eyebrow{color:#66c0f4!important;font-size:9px!important;letter-spacing:2px!important}.store-title{max-width:900px;font-size:clamp(30px,3.1vw,45px)!important;line-height:1.12!important;letter-spacing:-1.6px!important;color:#f2f7fb!important}.store-title span{color:#8bd3ff!important}.store-sub{color:#9eb2c2!important;font-size:13px!important}.category-strip{gap:8px!important;padding:13px 0 27px!important}.category{padding:8px 15px!important;background:#1a2b39!important;border:1px solid rgba(150,190,220,.14)!important;border-radius:3px!important;color:#b7c7d3!important;font-size:11px!important;font-weight:650!important}.category:hover,.category.active{background:#2b5875!important;border-color:rgba(102,192,244,.55)!important;color:#fff!important}.section{padding:12px 0 38px!important}.section-header{margin-bottom:17px!important}.section-title h2{color:#f0f5f8!important;font-size:21px!important;font-weight:750!important;letter-spacing:-.4px!important}.section-title p{color:#829bad!important;font-size:11px!important}.view-all{color:#8bd3ff!important;font-size:11px!important}.auto-catalog-status{background:rgba(22,53,75,.6)!important;border:1px solid rgba(102,192,244,.16)!important;border-radius:3px!important;color:#a9c0d0!important}.catalog-note{color:#7891a3!important}
+.apps-grid{grid-template-columns:repeat(4,minmax(0,1fr))!important;gap:14px!important;overflow:visible!important}.app-card,.ae-explore-grid .app-card{position:relative;display:flex!important;flex-direction:column!important;align-items:flex-start!important;min-width:0;min-height:225px!important;padding:15px!important;overflow:hidden!important;border:1px solid rgba(145,180,205,.13)!important;border-radius:4px!important;background:linear-gradient(155deg,#1a2b39,#152330 75%)!important;box-shadow:0 5px 18px rgba(0,0,0,.17)!important;color:#e6eef5!important;transition:transform .2s,border-color .2s,box-shadow .2s,background .2s!important}.app-card:before{content:"";position:absolute;left:0;right:0;top:0;height:2px;background:linear-gradient(90deg,#66c0f4,transparent);opacity:0;transition:opacity .2s}.app-card:hover,.app-card:focus-within{z-index:60!important;transform:translateY(-3px)!important;border-color:rgba(102,192,244,.48)!important;background:linear-gradient(155deg,#223c50,#182c3b 78%)!important;box-shadow:0 14px 30px rgba(0,0,0,.35)!important}.app-card:hover:before{opacity:1}.app-icon{width:76px!important;height:76px!important;margin:0 0 13px!important;border-radius:7px!important;object-fit:cover!important;background:#263c4b!important;border:1px solid rgba(190,215,235,.14)!important;box-shadow:0 7px 18px rgba(0,0,0,.24)}.app-name{display:block!important;width:100%;color:#f1f6fa!important;font-size:13px!important;font-weight:750!important;line-height:1.4!important;white-space:normal!important;display:-webkit-box!important;-webkit-line-clamp:2!important;-webkit-box-orient:vertical!important;overflow:hidden!important}.app-developer{width:100%;color:#8da5b7!important;font-size:10px!important;margin-top:5px!important;white-space:nowrap!important;overflow:hidden!important;text-overflow:ellipsis!important}.app-meta{display:flex!important;gap:9px!important;margin-top:auto!important;padding-top:11px!important;color:#9fb3c1!important;font-size:10px!important}.rating{color:#e9ba68!important}.rating i{color:#e9ba68!important}.downloads{border-color:rgba(190,215,235,.15)!important}.verified{top:10px!important;right:10px!important;background:#7cc35b!important;color:#10200c!important}.app-source-badge{max-width:100%;overflow:hidden;text-overflow:ellipsis;background:rgba(102,192,244,.1)!important;border:1px solid rgba(102,192,244,.18)!important;color:#8bd3ff!important}.app-hover-preview{border:1px solid rgba(102,192,244,.42)!important;background:linear-gradient(145deg,#203748,#142634)!important;box-shadow:0 18px 45px rgba(0,0,0,.55)!important}.app-preview-title,.app-preview-titlebox h3{color:#eef7fc!important}.app-preview-developer,.app-preview-description{color:#a4b9c8!important}.app-preview-badge{color:#8bd3ff!important}.app-preview-spec{background:rgba(6,18,28,.55)!important;border-color:rgba(190,215,235,.12)!important}.app-preview-spec strong{color:#eaf5fb!important}.app-hover-download{background:linear-gradient(180deg,#3b8dbb,#236184)!important;color:#fff!important}.loading-state,.empty-state{color:#9bb0bf!important}.empty-state h3{color:#f2f7fb!important}
+.info-row{gap:13px!important}.info-card{background:linear-gradient(145deg,#1a2a38,#142330)!important;border:1px solid rgba(145,180,205,.13)!important;border-radius:4px!important;padding:21px!important}.info-card i{color:#66c0f4!important}.info-card h3{color:#edf4f8!important}.info-card p{color:#9aafbf!important;line-height:1.7!important}footer{background:#0b141d!important;border-top:1px solid rgba(190,215,235,.11)!important}.footer-inner{max-width:none!important;margin-left:220px!important;padding:32px clamp(22px,3vw,48px)!important}.footer-brand p,.footer-column a{color:#8da3b4!important}.footer-column h4{color:#dce8ef!important}.footer-column a:hover{color:#8bd3ff!important}.copyright{border-color:rgba(190,215,235,.1)!important;color:#6d8496!important}.developer-credit{margin-left:220px!important;background:#0b141d!important;color:#6d8496!important}.developer-credit strong{color:#66c0f4!important}
+.mobile-bottom-nav{background:rgba(17,29,40,.97)!important;border-color:rgba(190,215,235,.14)!important}.mobile-bottom-nav .bottom-nav-link{color:#91a8b8!important}.mobile-bottom-nav .bottom-nav-link.selected{background:rgba(102,192,244,.15)!important;color:#8bd3ff!important}.sidebar-overlay{background:rgba(1,8,14,.75)!important}
+/* Full-screen Steam-like product detail view */
+.app-details-modal{position:fixed!important;inset:0!important;z-index:4000!important;display:none;align-items:stretch!important;justify-content:stretch!important;padding:0!important;background:rgba(3,9,15,.94)!important;backdrop-filter:blur(15px)!important}.app-details-modal.open{display:flex!important}.ae-product-page{position:relative!important;isolation:isolate!important;width:100%!important;height:100%!important;min-height:100dvh!important;overflow-y:auto!important;overflow-x:hidden!important;background:#101b27!important;color:#e6eef5!important}.ae-product-background{position:fixed!important;inset:0!important;z-index:-2!important;overflow:hidden!important;pointer-events:none!important}.ae-product-background[hidden]{display:none!important}.ae-product-background img{width:100%!important;height:100%!important;display:block!important;object-fit:cover!important;object-position:center 35%!important;filter:saturate(.9) blur(1px)!important;transform:scale(1.025)}.ae-product-background-shade{position:absolute!important;inset:0!important;background:linear-gradient(180deg,rgba(8,16,25,.78) 0%,rgba(9,19,29,.9) 43%,#101b27 100%)!important;backdrop-filter:blur(1.5px)}.ae-product-topbar{position:sticky!important;top:0!important;z-index:30!important;height:68px!important;display:flex!important;align-items:center!important;justify-content:space-between!important;gap:18px!important;padding:0 clamp(16px,4vw,62px)!important;background:rgba(14,25,36,.92)!important;border-bottom:1px solid rgba(190,215,235,.13)!important;backdrop-filter:blur(18px)!important}.ae-product-topbar .details-close{position:static!important;display:inline-flex!important;align-items:center!important;gap:9px!important;width:auto!important;height:38px!important;padding:0 13px!important;border:1px solid rgba(190,215,235,.18)!important;border-radius:3px!important;background:#1b2d3c!important;color:#c8d7e2!important;font:650 11px Inter,Arial,sans-serif!important;cursor:pointer}.ae-product-topbar .details-close:hover{background:#27465d!important;color:#fff!important}.ae-product-brand{display:flex!important;align-items:center!important;gap:9px!important;color:#ecf5fa!important;font-size:16px!important;font-weight:850!important}.ae-product-brand img{width:30px!important;height:30px!important;border-radius:7px!important}.ae-product-toplabel{font-size:9px!important;font-weight:800!important;letter-spacing:1.6px!important;color:#7795a9!important}.ae-product-main{max-width:1420px!important;margin:0 auto!important;padding:0 clamp(18px,3.4vw,52px) 55px!important}.ae-product-heading{display:flex!important;justify-content:space-between!important;align-items:center!important;gap:28px!important;padding:34px 0 25px!important;border-bottom:1px solid rgba(190,215,235,.12)!important}.ae-product-identity{display:flex!important;align-items:center!important;gap:21px!important;min-width:0!important}.ae-product-identity .details-icon{flex:none!important;width:106px!important;height:106px!important;object-fit:cover!important;border-radius:7px!important;border:1px solid rgba(190,215,235,.2)!important;background:#25394a!important;box-shadow:0 14px 34px rgba(0,0,0,.35)!important}.ae-product-kicker{margin-bottom:6px!important;color:#66c0f4!important;font-size:9px!important;font-weight:850!important;letter-spacing:1.7px!important}.details-title h1{margin:0 0 4px!important;color:#f4f8fb!important;font-size:clamp(26px,3vw,38px)!important;line-height:1.1!important;letter-spacing:-1px!important}.details-developer{margin:0 0 11px!important;color:#9bb2c3!important;font-size:12px!important}.details-badges{display:flex!important;flex-wrap:wrap!important;gap:7px!important}.details-badge{display:inline-flex!important;align-items:center!important;gap:5px!important;padding:5px 9px!important;border:1px solid rgba(190,215,235,.14)!important;border-radius:3px!important;background:rgba(21,42,58,.78)!important;color:#b9cbd8!important;font-size:9px!important}.details-badge.rating{color:#edc36e!important}.featured-badge{color:#a9d5f2!important}.ae-product-hero-action{display:flex!important;flex-direction:column!important;align-items:stretch!important;gap:8px!important;position:relative!important;z-index:2!important;min-width:220px!important;max-width:280px!important}.ae-product-hero-action .details-download{position:static!important;display:inline-flex!important;align-items:center!important;justify-content:center!important;gap:9px!important;min-height:53px!important;padding:0 24px!important;border:1px solid rgba(135,210,255,.45)!important;border-radius:3px!important;background:linear-gradient(180deg,#4b9ac5,#28678f)!important;color:#fff!important;text-decoration:none!important;font-size:14px!important;font-weight:850!important;letter-spacing:.2px;box-shadow:0 9px 25px rgba(0,0,0,.28)!important;transition:filter .2s,transform .2s!important}.ae-product-hero-action .details-download:hover{filter:brightness(1.13)!important;transform:translateY(-2px)!important}.ae-safe-note{color:#7991a3!important;font-size:9px!important;line-height:1.5!important;text-align:center!important}.ae-safe-note i{color:#7abfe5!important;margin-right:4px!important}
+.ae-product-showcase{display:grid!important;grid-template-columns:minmax(0,1.75fr) minmax(285px,.85fr)!important;align-items:start!important;gap:22px!important;padding:27px 0 0!important}.ae-product-media-column{min-width:0!important}.ae-media-label{display:flex!important;justify-content:space-between!important;align-items:center!important;gap:12px!important;margin-bottom:10px!important;color:#8da9bb!important;font-size:9px!important;font-weight:850!important;letter-spacing:1.25px!important}.ae-media-label span:last-child{color:#66c0f4!important;font-size:8px!important}.ae-video-stage{position:relative!important;display:grid!important;place-items:center!important;min-height:250px!important;aspect-ratio:16/9!important;overflow:hidden!important;border:1px solid rgba(190,215,235,.16)!important;border-radius:4px!important;background:radial-gradient(ellipse at center,#20384a,#08131d 72%)!important;box-shadow:0 15px 40px rgba(0,0,0,.35)!important}.ae-product-video{display:block!important;width:100%!important;height:100%!important;max-height:66vh!important;aspect-ratio:16/9!important;object-fit:contain!important;background:#050a0e!important}.ae-product-video[hidden]{display:none!important}.ae-media-fallback{position:absolute!important;inset:0!important;display:flex!important;align-items:center!important;justify-content:center!important;overflow:hidden!important;background:#0a151f!important}.ae-media-fallback[hidden],.ae-video-empty[hidden]{display:none!important}.ae-media-fallback img{width:100%!important;height:100%!important;object-fit:contain!important;background:rgba(4,9,14,.3)}.ae-media-fallback span{position:absolute!important;left:14px!important;bottom:12px!important;padding:7px 10px!important;border:1px solid rgba(190,215,235,.16)!important;border-radius:3px!important;background:rgba(8,18,27,.83)!important;color:#d7e7f1!important;font-size:9px!important}.ae-video-empty{position:absolute!important;inset:0!important;display:flex!important;flex-direction:column!important;align-items:center!important;justify-content:center!important;gap:9px!important;padding:25px!important;text-align:center!important;color:#91aabc!important}.ae-video-empty i{font-size:32px!important;color:#66c0f4!important}.ae-video-empty strong{color:#e6f0f6!important;font-size:15px!important}.ae-video-empty span{max-width:310px!important;color:#839cae!important;font-size:10px!important;line-height:1.6!important}.ae-video-playlist{display:flex!important;gap:7px!important;flex-wrap:wrap!important;margin-top:10px!important}.ae-video-chip{display:inline-flex!important;align-items:center!important;gap:7px!important;padding:8px 11px!important;border:1px solid rgba(190,215,235,.15)!important;border-radius:3px!important;background:#1a2c3b!important;color:#a9bfce!important;font:650 9px Inter,Arial,sans-serif!important;cursor:pointer!important}.ae-video-chip.active,.ae-video-chip:hover{border-color:rgba(102,192,244,.5)!important;background:#234761!important;color:#fff!important}.ae-video-chip i{color:#66c0f4!important}.ae-screenshot-rail{display:flex!important;gap:9px!important;margin-top:12px!important;overflow-x:auto!important;padding:2px 1px 9px!important;scrollbar-width:thin!important}.ae-screenshot-thumb{flex:0 0 118px!important;height:68px!important;padding:0!important;overflow:hidden!important;border:1px solid rgba(190,215,235,.15)!important;border-radius:3px!important;background:#0c1721!important;cursor:pointer!important;opacity:.76!important;transition:opacity .2s,border-color .2s!important}.ae-screenshot-thumb:hover,.ae-screenshot-thumb.active{opacity:1!important;border-color:#66c0f4!important}.ae-screenshot-thumb img{display:block!important;width:100%!important;height:100%!important;object-fit:cover!important}.ae-product-spec-column{display:flex!important;flex-direction:column!important;gap:12px!important;min-width:0!important}.ae-spec-cover{position:relative!important;min-height:155px!important;aspect-ratio:16/7!important;overflow:hidden!important;border:1px solid rgba(190,215,235,.16)!important;border-radius:3px!important;background:#1c3345!important}.ae-spec-cover img{position:absolute!important;inset:0!important;width:100%!important;height:100%!important;object-fit:cover!important;filter:saturate(.9)!important}.ae-spec-cover-shade{position:absolute!important;inset:0!important;background:linear-gradient(90deg,rgba(5,13,20,.82),rgba(5,13,20,.14)),linear-gradient(0deg,rgba(5,13,20,.6),transparent 80%)!important}.ae-spec-cover-caption{position:absolute!important;left:16px!important;right:16px!important;bottom:13px!important;display:flex!important;flex-direction:column!important;gap:5px!important}.ae-spec-cover-caption span{color:#8bd3ff!important;font-size:8px!important;font-weight:850!important;letter-spacing:1.2px!important}.ae-spec-cover-caption strong{color:#f3f8fb!important;font-size:17px!important;line-height:1.2!important;text-shadow:0 2px 9px rgba(0,0,0,.6)!important}.ae-spec-panel,.ae-aside-card{padding:16px!important;border:1px solid rgba(190,215,235,.14)!important;border-radius:3px!important;background:rgba(17,34,47,.9)!important;box-shadow:0 8px 24px rgba(0,0,0,.18)!important;backdrop-filter:blur(10px)!important}.ae-spec-panel-heading,.ae-aside-card-title{display:flex!important;align-items:center!important;gap:9px!important;margin-bottom:13px!important;color:#dcebf4!important;font-size:12px!important;font-weight:800!important}.ae-spec-panel-heading i,.ae-aside-card-title i{color:#66c0f4!important}.ae-product-stats{display:grid!important;grid-template-columns:repeat(2,minmax(0,1fr))!important;gap:8px!important;margin:0!important}.ae-product-stats .details-stat{display:flex!important;flex-direction:column!important;gap:5px!important;min-width:0!important;padding:11px!important;border:1px solid rgba(190,215,235,.1)!important;border-radius:3px!important;background:rgba(6,18,28,.45)!important}.details-stat span{color:#7390a4!important;font-size:8px!important;font-weight:800!important;letter-spacing:.8px!important}.details-stat strong{color:#e3edf4!important;font-size:12px!important;line-height:1.45!important;overflow-wrap:anywhere!important}.ae-spec-footnote{display:flex!important;align-items:flex-start!important;gap:8px!important;margin-top:12px!important;padding-top:11px!important;border-top:1px solid rgba(190,215,235,.1)!important;color:#8ba3b4!important;font-size:9px!important;line-height:1.6!important}.ae-spec-footnote i{color:#8bc53f!important}.ae-aside-card{padding:15px!important}.ae-aside-card-title{margin-bottom:8px!important}.ae-aside-card>p{margin:0 0 10px!important;color:#91a7b7!important;font-size:10px!important;line-height:1.7!important}.ae-aside-line{display:flex!important;align-items:center!important;gap:9px!important;padding:9px 0!important;border-top:1px solid rgba(190,215,235,.1)!important;color:#a9bdca!important;font-size:9px!important}.ae-aside-line i{width:15px!important;color:#66c0f4!important}
+.ae-product-lower{padding:34px 0 0!important;border-top:1px solid rgba(190,215,235,.1)!important;margin-top:32px!important}.ae-product-overview{max-width:950px!important}.details-section{margin:0 0 27px!important;padding:0!important;border:0!important}.ae-section-heading{display:flex!important;align-items:center!important;gap:11px!important;margin-bottom:11px!important}.ae-section-heading>span{display:grid!important;place-items:center!important;width:27px!important;height:27px!important;border:1px solid rgba(102,192,244,.22)!important;border-radius:3px!important;background:rgba(102,192,244,.1)!important;color:#79c9f4!important;font-size:9px!important;font-weight:850!important}.ae-section-heading h2{margin:0!important;color:#e8f1f6!important;font-size:17px!important;letter-spacing:-.25px!important}.details-section p{max-width:1000px!important;margin:0!important;color:#a6bac8!important;font-size:12px!important;line-height:1.9!important;white-space:pre-wrap!important}.details-tags{display:flex!important;flex-wrap:wrap!important;gap:7px!important}.details-tags span{padding:7px 10px!important;border:1px solid rgba(102,192,244,.18)!important;border-radius:3px!important;background:rgba(102,192,244,.08)!important;color:#9bd9fb!important;font-size:9px!important}.ae-screenshots-section{margin:28px 0 0!important;padding:23px 0 0!important;border-top:1px solid rgba(190,215,235,.1)!important}.details-screenshots{display:grid!important;grid-template-columns:repeat(auto-fit,minmax(210px,1fr))!important;gap:12px!important}.details-screenshots img{width:100%!important;height:clamp(150px,19vw,260px)!important;object-fit:cover!important;border:1px solid rgba(190,215,235,.14)!important;border-radius:3px!important;background:#09131d!important;box-shadow:0 8px 22px rgba(0,0,0,.25)!important}.ae-product-footer{display:flex!important;justify-content:space-between!important;gap:18px!important;padding:20px clamp(18px,4vw,62px)!important;border-top:1px solid rgba(190,215,235,.12)!important;background:rgba(8,17,25,.9)!important;color:#71899a!important;font-size:9px!important}
+/* Explore overlay follows the same blue/graphite visual language. */
+.ae-explore-page{background:#101923!important;color:#e6eef5!important}.ae-explore-bar{border-color:rgba(190,215,235,.12)!important}.ae-explore-brand{color:#ecf5fa!important}.ae-explore-brand span span{color:#66c0f4!important}.ae-explore-heading .ae-eyebrow{color:#66c0f4!important}.ae-explore-heading h1{color:#f1f6fa!important}.ae-explore-heading p,.ae-explore-status{color:#91a8b9!important}.ae-explore-close{background:#1b2c3a!important;border-color:rgba(190,215,235,.14)!important;color:#c8d8e3!important;border-radius:3px!important}.ae-explore-close:hover{background:#28475d!important;color:#fff!important}.ae-explore-searchbox{background:#0d1822!important;border-color:rgba(190,215,235,.15)!important;box-shadow:none!important;border-radius:3px!important}.ae-explore-searchbox i{color:#8aa3b5!important}.ae-explore-searchbox input{color:#eef5f9!important}.ae-explore-searchbox input::placeholder{color:#6e8799!important}.ae-explore-count{color:#a9bdca!important}.ae-explore-filters button{background:#1a2b39!important;border-color:rgba(190,215,235,.13)!important;color:#a9bdca!important;border-radius:3px!important}.ae-explore-filters button:hover,.ae-explore-filters button.active{background:#295674!important;border-color:rgba(102,192,244,.5)!important;color:#fff!important}.ae-explore-grid .app-card{min-height:220px!important}.ae-explore-grid .app-name{color:#f1f6fa!important}.ae-explore-grid .app-developer,.ae-explore-grid .app-meta{color:#91a8b9!important}.ae-explore-grid .app-source-badge{background:rgba(102,192,244,.1)!important;border-color:rgba(102,192,244,.2)!important;color:#8bd3ff!important}.ae-explore-grid .empty-state{background:#152432!important;border-color:rgba(190,215,235,.15)!important}.ae-explore-grid .empty-state h3{color:#edf5f9!important}
+@media(max-width:1150px){.apps-grid{grid-template-columns:repeat(3,minmax(0,1fr))!important}.ae-product-showcase{grid-template-columns:minmax(0,1.4fr) minmax(270px,.9fr)!important}}
+@media(max-width:900px){.store-sidebar{width:76px!important;padding:18px 8px!important}.store-sidebar .sidebar-brand{justify-content:center!important;padding:0 0 15px!important;margin:0 2px 18px!important}.store-sidebar .sidebar-brand span,.store-sidebar .sidebar-caption,.sidebar-link span{display:none!important}.sidebar-link{justify-content:center!important;gap:0!important;padding:0!important;min-height:45px!important}.sidebar-divider{margin:14px 8px!important}main{margin-left:76px!important;padding:0 22px!important}.footer-inner,.developer-credit{margin-left:76px!important}.ae-product-main{padding-left:24px!important;padding-right:24px!important}}
+@media(max-width:700px){.header{height:auto!important;min-height:105px!important}.nav{min-height:105px!important;display:grid!important;grid-template-columns:auto minmax(0,1fr) auto!important;grid-template-rows:auto auto!important;gap:8px 9px!important;padding:9px 12px!important}.logo{grid-column:1!important;grid-row:1!important;font-size:16px!important}.logo-icon{width:32px!important;height:32px!important}.search-wrapper{grid-column:1/-1!important;grid-row:2!important;width:100%!important;min-width:0!important}.nav-search{width:100%!important;height:40px!important}.archive-upload-btn{grid-column:2!important;grid-row:1!important;justify-self:end!important;padding:8px 10px!important}.mobile-menu{display:none!important}.store-sidebar{top:105px!important;width:61px!important;padding:13px 5px!important}.sidebar-link{min-height:43px!important;border-radius:3px!important}.sidebar-brand img{width:30px!important;height:30px!important}main{margin-left:61px!important;padding:0 13px!important}.store-head{padding:23px 0 14px!important}.store-title{font-size:26px!important}.store-sub{font-size:11px!important}.category-strip{padding:9px 0 19px!important}.category{padding:8px 11px!important;font-size:10px!important}.apps-grid,.ae-explore-grid{grid-template-columns:1fr!important;gap:9px!important}.app-card,.ae-explore-grid .app-card{display:grid!important;grid-template-columns:62px minmax(0,1fr)!important;grid-template-rows:auto auto auto!important;align-content:center!important;align-items:center!important;min-height:96px!important;padding:11px 12px!important;column-gap:12px!important;row-gap:3px!important}.app-icon{grid-column:1!important;grid-row:1/4!important;align-self:center!important;width:62px!important;height:62px!important;margin:0!important;border-radius:6px!important}.app-name{grid-column:2!important;grid-row:1!important;font-size:12px!important;line-height:1.3!important}.app-developer{grid-column:2!important;grid-row:2!important;margin:0!important;font-size:9px!important}.app-meta{grid-column:2!important;grid-row:3!important;margin:2px 0 0!important;padding-top:0!important;font-size:9px!important}.verified{top:7px!important;right:7px!important}.app-hover-preview{display:none!important}.info-row{grid-template-columns:1fr!important}.footer-inner,.developer-credit{margin-left:61px!important}.footer-inner{padding:25px 13px!important}.ae-product-topbar{height:58px!important;padding:0 12px!important}.ae-product-toplabel{display:none!important}.ae-product-main{padding:0 13px 36px!important}.ae-product-heading{display:flex!important;flex-direction:column!important;align-items:stretch!important;gap:17px!important;padding:21px 0 19px!important}.ae-product-identity{align-items:flex-start!important;gap:12px!important}.ae-product-identity .details-icon{width:72px!important;height:72px!important;border-radius:5px!important}.ae-product-kicker{font-size:7px!important}.details-title h1{font-size:22px!important}.details-developer{font-size:10px!important;margin-bottom:8px!important}.details-badge{padding:4px 7px!important;font-size:8px!important}.ae-product-hero-action{min-width:0!important;max-width:none!important}.ae-product-hero-action .details-download{min-height:47px!important;font-size:13px!important}.ae-product-showcase{grid-template-columns:1fr!important;gap:14px!important;padding-top:18px!important}.ae-video-stage{min-height:170px!important}.ae-product-video{max-height:none!important}.ae-spec-cover{min-height:135px!important}.ae-product-stats{grid-template-columns:repeat(2,minmax(0,1fr))!important}.ae-product-lower{padding-top:23px!important;margin-top:23px!important}.ae-section-heading h2{font-size:15px!important}.details-section p{font-size:11px!important}.details-screenshots{grid-template-columns:1fr 1fr!important;gap:7px!important}.details-screenshots img{height:auto!important;aspect-ratio:4/3!important}.ae-screenshot-thumb{flex-basis:95px!important;height:57px!important}.ae-product-footer{flex-direction:column!important;gap:7px!important;padding:16px 13px!important}.ae-explore-page{padding:0 13px 34px!important}.ae-explore-bar{grid-template-columns:1fr auto!important;gap:10px!important;padding:15px 0!important}.ae-explore-brand{grid-column:1!important;grid-row:1!important}.ae-explore-heading{grid-column:1/-1!important;grid-row:2!important}.ae-explore-heading h1{font-size:23px!important}.ae-explore-heading p{font-size:10px!important}.ae-explore-close{grid-column:2!important;grid-row:1!important}.ae-explore-close span{display:none!important}.ae-explore-controls{margin:16px auto 10px!important;align-items:flex-start!important;flex-direction:column!important}.ae-explore-searchbox{width:100%!important;height:45px!important}}
+@media(prefers-reduced-motion:reduce){.app-card,.app-hover-preview,.ae-video-chip{transition:none!important}}
+</style>
+
+<style id="appexio-steam-final-overrides">
+/* Last-pass adjustments: keep Steam product-page styles ahead of legacy rules and preserve media-led cards. */
+.featured-badge[style*="display: none"]{display:none!important}.ae-product-hero-action .details-download[style*="display: none"]{display:none!important}
+.steam-spotlight{position:relative;isolation:isolate;display:grid;grid-template-columns:minmax(0,1.05fr) minmax(280px,.95fr);align-items:center;gap:18px;min-height:255px;margin:0 0 23px;padding:26px 34px;overflow:hidden;border:1px solid rgba(102,192,244,.2);border-radius:4px;background:linear-gradient(112deg,#1b3448 0%,#142838 54%,#10202d 100%);box-shadow:0 16px 38px rgba(0,0,0,.22)}.steam-spotlight:before{content:"";position:absolute;z-index:-1;inset:0;background:radial-gradient(ellipse at 74% 38%,rgba(32,139,200,.3),transparent 45%),linear-gradient(90deg,rgba(11,22,32,.15),transparent 70%)}.steam-spotlight-copy{position:relative;z-index:3;max-width:570px}.steam-spotlight-kicker{display:inline-flex;align-items:center;gap:7px;color:#8bd3ff;font-size:8px;font-weight:850;letter-spacing:1.8px}.steam-spotlight h2{margin:11px 0 8px;color:#f4f8fb;font-size:clamp(25px,3vw,38px);line-height:1.08;letter-spacing:-1.2px}.steam-spotlight h2 span{color:#8bd3ff}.steam-spotlight p{max-width:460px;color:#a9bfce;font-size:11px;line-height:1.75}.steam-spotlight-button{display:inline-flex;align-items:center;gap:10px;margin-top:16px;padding:10px 15px;border:1px solid rgba(151,219,255,.4);border-radius:3px;background:linear-gradient(180deg,#3d8bb9,#215c83);color:#fff;font-size:10px;font-weight:800}.steam-spotlight-foot{display:flex;flex-wrap:wrap;gap:16px;margin-top:18px;color:#829caf;font-size:8px;font-weight:750;letter-spacing:.4px}.steam-spotlight-foot span{display:inline-flex;align-items:center;gap:6px}.steam-spotlight-foot i{color:#66c0f4}.steam-spotlight-art{position:relative;min-height:190px;display:flex;align-items:center;justify-content:center;perspective:900px}.steam-art-orbit{position:absolute;border:1px solid rgba(116,197,241,.2);border-radius:50%;transform:rotate(-24deg)}.steam-art-orbit-one{width:320px;height:130px}.steam-art-orbit-two{width:250px;height:95px;transform:rotate(43deg)}.steam-art-panel{position:absolute;display:grid;place-items:center;border:1px solid rgba(180,226,250,.25);border-radius:8px;box-shadow:0 22px 50px rgba(0,0,0,.35);transform-style:preserve-3d}.steam-art-panel-back{width:125px;height:145px;right:28%;top:12px;transform:rotate(13deg);background:linear-gradient(145deg,#2a617f,#15364c);color:#9cdfff;font-size:45px}.steam-art-panel-mid{width:138px;height:156px;right:15%;top:24px;transform:rotate(-10deg);background:linear-gradient(145deg,#325a77,#152f46);color:#c7eaff;font-size:49px}.steam-art-panel-front{width:125px;height:150px;right:35%;top:26px;transform:rotate(-3deg);display:flex;flex-direction:column;gap:8px;background:linear-gradient(155deg,#214d68,#102333);color:#d8f1ff;font-size:9px;font-weight:900;letter-spacing:2px}.steam-art-panel-front img{width:62px;height:62px;object-fit:cover;border-radius:13px;box-shadow:0 8px 20px rgba(0,0,0,.3)}.steam-art-glow{position:absolute;width:200px;height:100px;right:24%;bottom:0;border-radius:50%;background:rgba(37,154,218,.2);filter:blur(35px);z-index:-1}
+.app-card{min-height:275px!important;padding:14px!important}.app-cover-art{display:block!important;width:calc(100% + 28px)!important;height:112px!important;flex:0 0 112px!important;max-width:none!important;margin:-14px -14px 11px!important;object-fit:cover!important;object-position:center 35%!important;background:linear-gradient(120deg,#203b4f,#0d1b27)!important;border:0!important;border-bottom:1px solid rgba(190,215,235,.12)!important}.app-icon{width:48px!important;height:48px!important;margin:-34px 0 8px!important;position:relative!important;z-index:1!important;border:3px solid #192d3c!important;border-radius:6px!important}.app-name{font-size:12px!important}.app-meta{padding-top:8px!important}.ae-explore-grid .app-card{min-height:275px!important}
+@media(max-width:700px){.steam-spotlight{grid-template-columns:1fr;min-height:0;margin-bottom:16px;padding:21px 18px}.steam-spotlight-art{display:none}.steam-spotlight h2{font-size:25px}.steam-spotlight-foot{gap:10px;margin-top:13px}.app-cover-art{display:none!important}.app-card{min-height:92px!important;padding:11px 12px!important}.app-icon{width:62px!important;height:62px!important;margin:0!important;border:1px solid rgba(190,215,235,.14)!important;border-radius:6px!important}.app-meta{padding-top:0!important}.app-name{font-size:12px!important}}
+@media(min-width:701px) and (max-width:900px){.apps-grid{grid-template-columns:repeat(2,minmax(0,1fr))!important}.steam-spotlight-art{opacity:.8}}
+</style>
+
+<style id="appexio-steam-storefront-final">
+/* ---------------------------------------------------------
+   APPEXIO STEAM-INSPIRED STOREFRONT — FINAL DESIGN LAYER
+   One consistent midnight-blue / Steam-cyan design language.
+---------------------------------------------------------- */
+:root {
+  color-scheme: dark;
+  --ae-bg: #0b1722;
+  --ae-bg-deep: #08131d;
+  --ae-panel: #132332;
+  --ae-panel-2: #182c3d;
+  --ae-panel-3: #20384a;
+  --ae-line: rgba(157,190,214,.16);
+  --ae-white: #f0f6fb;
+  --ae-muted: #9bb0c0;
+  --ae-cyan: #66c0f4;
+  --ae-cyan-bright: #8bd5ff;
+  --ae-green: #a4d44c;
+}
+html, body { background: var(--ae-bg-deep) !important; color: var(--ae-white) !important; }
+body { padding-top: 76px !important; font-family: Inter, Arial, sans-serif !important; }
+.header {
+  position: fixed !important; inset: 0 0 auto 0 !important; height: 76px !important;
+  z-index: 1200 !important; background: rgba(12,24,35,.97) !important;
+  border-bottom: 1px solid rgba(102,192,244,.18) !important;
+  box-shadow: 0 7px 30px rgba(0,0,0,.3) !important;
+  backdrop-filter: blur(18px) saturate(1.25) !important;
+}
+.nav {
+  height: 76px !important; width: 100% !important; max-width: none !important;
+  display: flex !important; align-items: center !important; gap: clamp(14px,2vw,30px) !important;
+  padding: 0 clamp(18px,3.2vw,52px) !important;
+}
+.logo { display:flex !important; flex:0 0 auto !important; gap:10px !important; align-items:center !important; color:#f1f7fb !important; text-decoration:none !important; }
+.logo-word { font-size:20px; font-weight:850; letter-spacing:-.7px; color:#f1f7fb; }
+.logo-word > span { color:var(--ae-cyan) !important; }
+.logo-icon { width:39px !important; height:39px !important; border-radius:10px !important; overflow:hidden !important; border:1px solid rgba(102,192,244,.28) !important; background:#183247 !important; box-shadow:0 4px 16px rgba(0,0,0,.26) !important; }
+.top-store-nav { display:flex; align-items:center; align-self:stretch; gap:5px; flex:0 0 auto; }
+.top-nav-link { position:relative; display:flex; align-items:center; padding:0 13px; color:#91aabd !important; text-decoration:none; font-size:11px; font-weight:850; letter-spacing:1.05px; transition:color .18s,background .18s; }
+.top-nav-link:after { content:""; position:absolute; left:13px; right:13px; bottom:0; height:2px; background:var(--ae-cyan); transform:scaleX(0); transform-origin:left; transition:transform .18s; }
+.top-nav-link:hover,.top-nav-link.active { color:#f1f8fc !important; background:linear-gradient(180deg,transparent,rgba(102,192,244,.07)); }
+.top-nav-link.active:after { transform:scaleX(1); }
+.search-wrapper { min-width:140px; flex:1 1 330px !important; max-width:520px; margin-left:auto !important; }
+.nav-search { width:100% !important; height:42px !important; display:flex !important; gap:11px !important; padding:0 14px !important; background:#081722 !important; border:1px solid rgba(145,185,211,.18) !important; border-radius:5px !important; box-shadow:inset 0 1px 3px rgba(0,0,0,.32) !important; }
+.nav-search:focus-within { border-color:rgba(102,192,244,.72) !important; box-shadow:0 0 0 3px rgba(102,192,244,.11) !important; }
+.nav-search i { color:#7593a8 !important; }
+.nav-search input { color:#e8f3fa !important; font-size:12px !important; }
+.nav-search input::placeholder { color:#6e8799 !important; }
+.archive-upload-btn,.archive-upload-btn:visited {
+  display:inline-flex !important; align-items:center !important; justify-content:center !important; gap:8px !important;
+  min-height:40px !important; padding:0 15px !important; border:1px solid rgba(102,192,244,.35) !important;
+  border-radius:4px !important; background:linear-gradient(180deg,#286d98,#1a4e70) !important;
+  color:#f2f9fd !important; font-size:10px !important; font-weight:850 !important; letter-spacing:.9px !important;
+  box-shadow:0 4px 14px rgba(0,0,0,.22) !important; transition:filter .18s,transform .18s !important;
+}
+.archive-upload-btn i,.archive-upload-btn span { color:inherit !important; }
+.archive-upload-btn:hover { filter:brightness(1.16); transform:translateY(-1px) !important; }
+.mobile-menu { display:none !important; }
+
+/* Sidebar: quiet icon rail that becomes a full, labeled navigation panel. */
+.store-sidebar {
+  position:fixed !important; z-index:1100 !important; left:0 !important; top:76px !important; bottom:0 !important;
+  width:78px !important; padding:19px 10px 25px !important; overflow-x:hidden !important; overflow-y:auto !important;
+  background:linear-gradient(180deg,#0d1b28 0%,#0a1621 100%) !important;
+  border-right:1px solid rgba(147,184,209,.13) !important; box-shadow:8px 0 28px rgba(0,0,0,.14) !important;
+  transition:width .23s cubic-bezier(.2,.75,.25,1),box-shadow .23s !important; scrollbar-width:thin;
+}
+.store-sidebar:hover,.store-sidebar:focus-within { width:252px !important; box-shadow:18px 0 45px rgba(0,0,0,.38) !important; }
+.store-sidebar .sidebar-brand { display:none !important; }
+.store-sidebar .sidebar-caption { display:none !important; padding:0 13px 8px !important; color:#68869c !important; font-size:9px !important; font-weight:850 !important; letter-spacing:1.45px !important; white-space:nowrap; }
+.store-sidebar .sidebar-link {
+  display:flex !important; align-items:center !important; justify-content:center !important; gap:0 !important;
+  width:100% !important; min-height:48px !important; margin:4px 0 !important; padding:0 !important;
+  border:1px solid transparent !important; border-radius:5px !important; color:#92aabd !important;
+  font-size:11px !important; font-weight:700 !important; white-space:nowrap !important; overflow:hidden !important;
+  transition:background .18s,border-color .18s,color .18s,padding .18s,gap .18s !important;
+}
+.store-sidebar .sidebar-link i { flex:0 0 24px !important; width:24px !important; margin:0 !important; color:#7897ad !important; font-size:17px !important; text-align:center !important; }
+.store-sidebar .sidebar-link span { display:none !important; opacity:0; }
+.store-sidebar .sidebar-link:hover,.store-sidebar .sidebar-link.selected { color:#f5fbff !important; background:linear-gradient(90deg,rgba(102,192,244,.19),rgba(102,192,244,.055)) !important; border-color:rgba(102,192,244,.13) !important; box-shadow:inset 3px 0 var(--ae-cyan) !important; }
+.store-sidebar .sidebar-link:hover i,.store-sidebar .sidebar-link.selected i { color:var(--ae-cyan-bright) !important; }
+.store-sidebar .sidebar-divider { height:1px !important; margin:14px 10px !important; background:rgba(149,184,207,.14) !important; }
+.store-sidebar:hover .sidebar-caption,.store-sidebar:focus-within .sidebar-caption { display:block !important; }
+.store-sidebar:hover .sidebar-link,.store-sidebar:focus-within .sidebar-link { justify-content:flex-start !important; gap:14px !important; padding:0 13px !important; }
+.store-sidebar:hover .sidebar-link span,.store-sidebar:focus-within .sidebar-link span { display:inline !important; opacity:1 !important; }
+.store-sidebar:hover .sidebar-link i,.store-sidebar:focus-within .sidebar-link i { flex-basis:22px !important; width:22px !important; }
+.store-sidebar:hover .sidebar-divider,.store-sidebar:focus-within .sidebar-divider { margin:14px 12px !important; }
+.store-sidebar::-webkit-scrollbar { width:5px; }
+.store-sidebar::-webkit-scrollbar-thumb { background:rgba(128,164,190,.22); border-radius:10px; }
+
+body > main { width:auto !important; max-width:none !important; margin:0 0 0 78px !important; padding:0 clamp(22px,3.3vw,54px) !important; }
+.store-head { padding:34px 0 15px !important; }
+.eyebrow { color:var(--ae-cyan) !important; font-size:9px !important; letter-spacing:1.8px !important; }
+.store-title { color:#f3f8fc !important; font-size:clamp(27px,2.7vw,39px) !important; letter-spacing:-1.35px !important; }
+.store-title span { color:var(--ae-cyan-bright) !important; }
+.store-sub { color:#92a9bb !important; font-size:12px !important; }
+.category-strip { display:flex !important; gap:8px !important; padding:10px 0 22px !important; }
+.category { padding:8px 13px !important; border:1px solid rgba(145,183,209,.16) !important; border-radius:3px !important; background:#142737 !important; color:#a7bdcc !important; font-size:10px !important; font-weight:750 !important; }
+.category:hover,.category.active { background:#214c68 !important; border-color:rgba(102,192,244,.48) !important; color:#f3f9fd !important; }
+
+/* Featured / recommended media hub. */
+.ae-home-showcase { margin:0 0 32px !important; padding:20px !important; border:1px solid rgba(102,192,244,.17) !important; border-radius:5px !important; background:linear-gradient(145deg,#142a3a 0%,#0e1e2c 54%,#101c28 100%) !important; box-shadow:0 16px 42px rgba(0,0,0,.24) !important; }
+.ae-showcase-heading { display:flex; align-items:flex-end; justify-content:space-between; gap:15px; margin:0 0 16px; }
+.ae-showcase-kicker { display:flex; align-items:center; gap:7px; color:#81cfff; font-size:8px; font-weight:900; letter-spacing:1.8px; }
+.ae-showcase-kicker i { font-size:10px; }
+.ae-showcase-heading h2 { margin:5px 0 3px; color:#f1f7fb; font-size:21px; font-weight:800; letter-spacing:-.55px; }
+.ae-showcase-heading p { margin:0; color:#8fa9ba; font-size:10px; line-height:1.5; }
+.ae-showcase-live { display:inline-flex; align-items:center; gap:8px; padding:7px 10px; border:1px solid rgba(102,192,244,.18); border-radius:3px; color:#8db4cb; background:rgba(4,17,27,.36); font-size:8px; font-weight:850; letter-spacing:1px; white-space:nowrap; }
+.ae-showcase-live i,.ae-video-live i { width:6px; height:6px; border-radius:50%; background:#7ecf80; box-shadow:0 0 0 4px rgba(126,207,128,.12); }
+.ae-showcase-layout { display:grid; grid-template-columns:minmax(0,1.72fr) minmax(260px,.78fr); gap:15px; align-items:stretch; }
+.ae-featured-stage { min-width:0; border:1px solid rgba(151,194,222,.17); border-radius:4px; overflow:hidden; background:#0a1520; box-shadow:0 7px 22px rgba(0,0,0,.22); }
+.ae-featured-media { position:relative; min-height:330px; aspect-ratio:16/8.2; overflow:hidden; background:linear-gradient(140deg,#203f55,#0b1a27); }
+.ae-featured-artwork,.ae-featured-video { position:absolute; inset:0; width:100%; height:100%; display:block; object-fit:cover; object-position:center 35%; }
+.ae-featured-artwork { z-index:0; opacity:.76; filter:saturate(.94); transition:opacity .25s; }
+.ae-featured-video { z-index:1; opacity:1; background:#07131e; }
+.ae-featured-video[hidden],.ae-featured-artwork[hidden] { display:none !important; }
+.ae-featured-shade { position:absolute; z-index:2; inset:0; background:linear-gradient(90deg,rgba(4,11,19,.94) 0%,rgba(5,13,21,.72) 38%,rgba(5,13,21,.16) 78%),linear-gradient(0deg,rgba(4,11,19,.8),transparent 48%,rgba(4,11,19,.14)); pointer-events:none; }
+.ae-featured-copy { position:absolute; z-index:3; left:clamp(19px,3vw,34px); bottom:25px; width:min(57%,520px); }
+.ae-featured-label { display:inline-flex; align-items:center; gap:7px; color:#a7ddff; font-size:8px; font-weight:900; letter-spacing:1.5px; }
+.ae-featured-label i { color:#f2c66e; }
+.ae-featured-copy h3 { margin:10px 0 8px; color:#fff; font-size:clamp(23px,2.7vw,37px); line-height:1.08; letter-spacing:-1px; text-shadow:0 2px 12px rgba(0,0,0,.42); }
+.ae-featured-copy p { max-width:480px; margin:0; color:#d0dce5; font-size:11px; line-height:1.65; text-shadow:0 1px 8px rgba(0,0,0,.48); display:-webkit-box; -webkit-line-clamp:3; -webkit-box-orient:vertical; overflow:hidden; }
+.ae-featured-meta { display:flex; flex-wrap:wrap; gap:13px; margin-top:13px; color:#b4c8d6; font-size:9px; font-weight:700; }
+.ae-featured-meta span { display:inline-flex; align-items:center; gap:6px; }
+.ae-featured-meta i { color:#86cdf7; }
+.ae-featured-cta { display:inline-flex; align-items:center; gap:9px; min-height:38px; margin-top:15px; padding:0 14px; border:1px solid rgba(160,220,255,.4); border-radius:3px; background:linear-gradient(180deg,#3487b6,#205b82); color:#fff; font:800 10px Inter,Arial,sans-serif; cursor:pointer; box-shadow:0 5px 16px rgba(0,0,0,.28); transition:filter .18s,transform .18s; }
+.ae-featured-cta:hover:not(:disabled) { filter:brightness(1.13); transform:translateY(-1px); }
+.ae-featured-cta:disabled { opacity:.55; cursor:not-allowed; }
+.ae-featured-cta i:last-child { margin-left:3px; }
+.ae-video-live { position:absolute; z-index:3; top:15px; right:15px; display:inline-flex; align-items:center; gap:8px; padding:7px 9px; border:1px solid rgba(255,255,255,.16); border-radius:3px; background:rgba(4,12,20,.66); color:#d8e8f2; font-size:7px; font-weight:850; letter-spacing:1px; backdrop-filter:blur(8px); }
+.ae-featured-selectors { display:flex; gap:7px; min-height:64px; padding:9px; background:#0d1c29; overflow-x:auto; scrollbar-width:thin; }
+.ae-featured-selector { flex:1 0 0; min-width:120px; max-width:220px; display:flex; align-items:center; gap:9px; padding:6px; border:1px solid transparent; border-radius:3px; background:transparent; color:#dce8ef; text-align:left; cursor:pointer; transition:background .18s,border-color .18s; }
+.ae-featured-selector:hover,.ae-featured-selector.active { border-color:rgba(102,192,244,.32); background:rgba(102,192,244,.1); }
+.ae-featured-selector img { width:42px; height:42px; flex:0 0 42px; border-radius:3px; object-fit:cover; background:#21394b; }
+.ae-featured-selector span { min-width:0; display:flex; flex-direction:column; gap:4px; }
+.ae-featured-selector strong { overflow:hidden; text-overflow:ellipsis; white-space:nowrap; color:#eaf3f9; font-size:9px; }
+.ae-featured-selector small { color:#7fa4bb; font-size:7px; font-weight:850; letter-spacing:.7px; }
+.ae-featured-empty { display:flex; align-items:center; min-height:42px; padding:5px 8px; color:#86a0b2; font-size:9px; line-height:1.55; }
+.ae-recommended-panel { min-width:0; display:flex; flex-direction:column; padding:15px 13px 10px; border:1px solid rgba(151,194,222,.15); border-radius:4px; background:linear-gradient(160deg,#152a39,#101f2c); }
+.ae-recommended-heading { display:flex; justify-content:space-between; align-items:center; gap:10px; padding:1px 2px 12px; border-bottom:1px solid rgba(151,194,222,.14); }
+.ae-recommended-heading span { color:#7eafca; font-size:7px; font-weight:900; letter-spacing:1.5px; }
+.ae-recommended-heading h3 { margin-top:4px; color:#f0f6fb; font-size:17px; letter-spacing:-.35px; }
+.ae-recommended-heading>i { display:grid; place-items:center; width:31px; height:31px; border:1px solid rgba(102,192,244,.2); border-radius:4px; background:rgba(102,192,244,.1); color:#80cffc; }
+.ae-recommended-list { display:flex; flex-direction:column; gap:7px; padding:11px 0; }
+.ae-recommended-item { display:flex; align-items:center; gap:10px; width:100%; min-height:62px; padding:7px; border:1px solid transparent; border-radius:3px; background:rgba(4,16,25,.32); color:#e8f1f7; text-align:left; cursor:pointer; transition:background .18s,border-color .18s,transform .18s; }
+.ae-recommended-item:hover { transform:translateX(2px); border-color:rgba(102,192,244,.27); background:rgba(102,192,244,.09); }
+.ae-recommended-item img { width:58px; height:48px; flex:0 0 58px; border-radius:2px; object-fit:cover; background:#20394b; }
+.ae-recommended-copy { min-width:0; flex:1; display:flex; flex-direction:column; gap:4px; }
+.ae-recommended-copy strong { overflow:hidden; color:#eaf3f9; font-size:10px; font-weight:800; text-overflow:ellipsis; white-space:nowrap; }
+.ae-recommended-copy small { overflow:hidden; color:#86a0b2; font-size:8px; text-overflow:ellipsis; white-space:nowrap; }
+.ae-recommended-arrow { flex:0 0 auto; color:#6ea8ca; font-size:10px; }
+.ae-recommended-empty { display:flex; flex-direction:column; align-items:flex-start; gap:7px; min-height:165px; justify-content:center; padding:14px 8px; color:#89a3b5; }
+.ae-recommended-empty>i { color:#73c8f7; font-size:22px; }
+.ae-recommended-empty strong { color:#e0edf5; font-size:11px; }
+.ae-recommended-empty span { max-width:210px; color:#8299a9; font-size:9px; line-height:1.55; }
+.ae-recommended-all { display:flex; align-items:center; justify-content:space-between; gap:10px; margin-top:auto; padding:10px 3px 2px; border-top:1px solid rgba(151,194,222,.12); color:#8bd3ff !important; font-size:9px; font-weight:800; }
+.ae-recommended-all:hover { color:#fff !important; }
+
+/* Product grid and the rest of the store share the same palette. */
+.section { padding:12px 0 36px !important; }
+.section-title h2 { color:#eff6fb !important; font-size:19px !important; }
+.section-title p,.catalog-note { color:#8099ab !important; }
+.view-all { color:#8bd3ff !important; }
+.auto-catalog-status { background:rgba(19,48,67,.72) !important; border:1px solid rgba(102,192,244,.18) !important; border-radius:4px !important; color:#a9bfce !important; }
+.apps-grid { grid-template-columns:repeat(4,minmax(0,1fr)) !important; gap:14px !important; }
+.app-card,.ae-explore-grid .app-card { background:linear-gradient(150deg,#172c3c,#112231) !important; border:1px solid rgba(145,183,209,.13) !important; border-radius:4px !important; box-shadow:0 5px 18px rgba(0,0,0,.2) !important; }
+.app-card:hover,.app-card:focus-within { border-color:rgba(102,192,244,.44) !important; background:linear-gradient(150deg,#203c50,#152b3b) !important; box-shadow:0 14px 30px rgba(0,0,0,.34) !important; }
+.app-icon { border-radius:5px !important; }
+.app-name { color:#f0f6fb !important; }
+.app-developer,.app-meta { color:#91a9ba !important; }
+.app-preview-title { color:#f2f8fc !important; }
+.app-preview-description { color:#b4c7d4 !important; }
+.app-hover-preview { background:linear-gradient(150deg,#1c3446,#102231) !important; border-color:rgba(102,192,244,.4) !important; }
+.app-hover-download { background:linear-gradient(180deg,#347fab,#20587b) !important; }
+.info-card { background:#132635 !important; border-color:rgba(145,183,209,.13) !important; }
+.info-card i { color:var(--ae-cyan) !important; }
+.info-card h3 { color:#edf5fa !important; }
+.info-card p { color:#98adbc !important; }
+footer { background:#09151f !important; border-color:rgba(145,183,209,.12) !important; }
+.footer-inner,.developer-credit { margin-left:78px !important; }
+.footer-inner { padding-left:clamp(22px,3.3vw,54px) !important; padding-right:clamp(22px,3.3vw,54px) !important; }
+.footer-column h4 { color:#dce8ef !important; }
+.footer-column a,.footer-brand p,.copyright,.developer-credit { color:#8299aa !important; }
+.footer-column a:hover { color:#8bd3ff !important; }
+.developer-credit strong { color:#66c0f4 !important; }
+.mobile-bottom-nav { background:rgba(10,24,35,.96) !important; border-color:rgba(145,183,209,.18) !important; box-shadow:0 -8px 26px rgba(0,0,0,.28) !important; }
+.mobile-bottom-nav .bottom-nav-link { color:#8da7b8 !important; }
+.mobile-bottom-nav .bottom-nav-link.selected { color:#a3dcff !important; background:rgba(102,192,244,.14) !important; }
+.sidebar-overlay { background:rgba(2,8,14,.74) !important; }
+
+/* Tablet / laptop. */
+@media (max-width:1200px) {
+  .top-store-nav { gap:0; }
+  .top-nav-link { padding:0 9px; font-size:10px; }
+  .top-nav-link:after { left:9px; right:9px; }
+  .ae-showcase-layout { grid-template-columns:minmax(0,1.5fr) minmax(245px,.85fr); }
+  .ae-featured-media { min-height:295px; }
+  .apps-grid { grid-template-columns:repeat(3,minmax(0,1fr)) !important; }
+}
+@media (max-width:900px) {
+  body { padding-top:70px !important; }
+  .header { height:70px !important; }
+  .nav { height:70px !important; gap:12px !important; padding:0 16px !important; }
+  .logo-word { font-size:18px; }
+  .top-store-nav { display:none !important; }
+  .search-wrapper { max-width:none; }
+  .store-sidebar { top:70px !important; }
+  body > main { margin-left:78px !important; padding-left:20px !important; padding-right:20px !important; }
+  .footer-inner,.developer-credit { margin-left:78px !important; }
+  .ae-showcase-layout { grid-template-columns:1fr; }
+  .ae-featured-media { min-height:320px; }
+  .ae-recommended-panel { padding:13px; }
+  .ae-recommended-list { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); }
+  .ae-recommended-item { min-height:68px; }
+  .apps-grid { grid-template-columns:repeat(2,minmax(0,1fr)) !important; }
+}
+@media (max-width:600px) {
+  body { padding-top:103px !important; padding-bottom:calc(82px + env(safe-area-inset-bottom)) !important; }
+  .header { height:103px !important; }
+  .nav { height:103px !important; min-height:103px !important; display:grid !important; grid-template-columns:minmax(0,1fr) auto !important; grid-template-rows:42px 42px !important; align-content:center !important; gap:7px 10px !important; padding:8px 12px 8px 43px !important; }
+  .logo { grid-column:1 !important; grid-row:1 !important; min-width:0; }
+  .logo-icon { width:33px !important; height:33px !important; }
+  .logo-word { font-size:17px; }
+  .archive-upload-btn { grid-column:2 !important; grid-row:1 !important; min-height:34px !important; padding:0 10px !important; font-size:8px !important; }
+  .search-wrapper { grid-column:1 / -1 !important; grid-row:2 !important; width:100% !important; min-width:0 !important; margin:0 !important; }
+  .nav-search { width:100% !important; height:39px !important; }
+  .nav-search input { font-size:11px !important; }
+  .mobile-menu { display:grid !important; position:fixed !important; left:0 !important; top:50% !important; z-index:1600 !important; width:34px !important; height:66px !important; padding:0 !important; place-items:center !important; transform:translateY(-50%) !important; border:1px solid rgba(145,190,218,.23) !important; border-left:0 !important; border-radius:0 13px 13px 0 !important; background:rgba(17,43,61,.97) !important; color:#eaf7ff !important; box-shadow:8px 5px 24px rgba(0,0,0,.38) !important; font-size:14px !important; cursor:pointer !important; }
+  body.sidebar-open .mobile-menu { left:min(300px,84vw) !important; border-left:1px solid rgba(145,190,218,.23) !important; }
+  .store-sidebar { top:0 !important; bottom:0 !important; left:0 !important; z-index:1550 !important; width:min(300px,84vw) !important; padding:23px 14px calc(28px + env(safe-area-inset-bottom)) !important; background:rgba(9,22,33,.99) !important; border-right:1px solid rgba(145,190,218,.2) !important; box-shadow:18px 0 48px rgba(0,0,0,.5) !important; transform:translateX(-105%) !important; visibility:hidden !important; transition:transform .26s cubic-bezier(.2,.75,.25,1),visibility .26s !important; }
+  body.sidebar-open .store-sidebar { transform:translateX(0) !important; visibility:visible !important; }
+  .store-sidebar .sidebar-brand { display:flex !important; align-items:center !important; gap:11px !important; margin:0 5px 21px !important; padding:3px 10px 17px !important; border-bottom:1px solid rgba(145,183,209,.15) !important; color:#f1f8fc !important; font-size:18px !important; font-weight:850 !important; }
+  .store-sidebar .sidebar-brand img { width:39px !important; height:39px !important; border-radius:9px !important; }
+  .store-sidebar .sidebar-caption { display:block !important; padding:0 14px 7px !important; color:#7294aa !important; }
+  .store-sidebar .sidebar-link,.store-sidebar:hover .sidebar-link { justify-content:flex-start !important; gap:14px !important; min-height:48px !important; padding:0 14px !important; margin:4px 0 !important; border-radius:4px !important; color:#b1c3d0 !important; }
+  .store-sidebar .sidebar-link span,.store-sidebar:hover .sidebar-link span { display:inline !important; opacity:1 !important; }
+  .store-sidebar .sidebar-link i { flex:0 0 22px !important; width:22px !important; color:#83a5bb !important; }
+  .store-sidebar .sidebar-divider { margin:14px 11px !important; }
+  body > main { width:100% !important; max-width:none !important; margin:0 !important; padding:0 13px !important; }
+  .store-head { padding:23px 0 12px !important; }
+  .store-title { font-size:25px !important; }
+  .store-sub { font-size:10px !important; }
+  .category-strip { padding:9px 0 17px !important; overflow-x:auto; }
+  .category { flex:none; white-space:nowrap; }
+  .ae-home-showcase { margin:0 0 23px !important; padding:12px !important; border-radius:4px !important; }
+  .ae-showcase-heading { align-items:flex-start; margin-bottom:11px; }
+  .ae-showcase-heading h2 { font-size:17px; }
+  .ae-showcase-heading p { max-width:240px; font-size:9px; }
+  .ae-showcase-live { padding:6px 7px; font-size:6px; }
+  .ae-showcase-layout { grid-template-columns:1fr; gap:10px; }
+  .ae-featured-media { min-height:265px; aspect-ratio:4/3; }
+  .ae-featured-copy { left:15px; right:15px; bottom:15px; width:auto; }
+  .ae-featured-copy h3 { font-size:24px; margin:8px 0 6px; }
+  .ae-featured-copy p { font-size:9px; -webkit-line-clamp:2; }
+  .ae-featured-meta { gap:9px; margin-top:9px; font-size:8px; }
+  .ae-featured-cta { min-height:35px; margin-top:11px; font-size:9px; }
+  .ae-video-live { top:9px; right:9px; padding:6px 7px; font-size:6px; }
+  .ae-featured-selectors { min-height:58px; padding:6px; }
+  .ae-featured-selector { min-width:125px; }
+  .ae-featured-selector img { width:36px; height:36px; flex-basis:36px; }
+  .ae-recommended-panel { padding:11px; }
+  .ae-recommended-heading h3 { font-size:15px; }
+  .ae-recommended-list { grid-template-columns:1fr; gap:6px; padding:8px 0; }
+  .ae-recommended-item { min-height:57px; }
+  .ae-recommended-item img { width:54px; height:44px; flex-basis:54px; }
+  #gamesGrid.apps-grid,#aeExploreGrid.apps-grid,.apps-grid,.ae-explore-grid { grid-template-columns:repeat(2,minmax(0,1fr)) !important; gap:9px !important; }
+  .app-card,.ae-explore-grid .app-card { display:flex !important; flex-direction:column !important; align-items:flex-start !important; min-width:0 !important; min-height:170px !important; padding:10px !important; border-radius:4px !important; }
+  .app-cover-art { display:block !important; width:calc(100% + 20px) !important; height:78px !important; flex:0 0 78px !important; margin:-10px -10px 8px !important; object-fit:cover !important; }
+  .app-icon { width:42px !important; height:42px !important; margin:-24px 0 7px !important; border:2px solid #142b3c !important; border-radius:5px !important; }
+  .app-name { width:100% !important; font-size:10px !important; line-height:1.35 !important; }
+  .app-developer { width:100% !important; margin:4px 0 0 !important; font-size:8px !important; }
+  .app-meta { width:100% !important; margin-top:auto !important; padding-top:8px !important; gap:7px !important; font-size:8px !important; }
+  .app-hover-preview { display:none !important; }
+  .footer-inner,.developer-credit { margin-left:0 !important; }
+  .footer-inner { padding:24px 13px !important; }
+  .mobile-bottom-nav { left:10px !important; right:10px !important; bottom:calc(9px + env(safe-area-inset-bottom)) !important; padding:6px 6px calc(6px + env(safe-area-inset-bottom)) !important; border:1px solid rgba(145,183,209,.18) !important; border-radius:18px !important; }
+  .mobile-bottom-nav .bottom-nav-link { min-height:44px !important; border-radius:13px !important; font-size:9px !important; }
+  .mobile-bottom-nav .bottom-nav-link i { font-size:16px !important; }
+}
+@media (max-width:370px) {
+  .ae-showcase-live { display:none; }
+  .ae-featured-media { min-height:245px; }
+  .ae-featured-copy h3 { font-size:21px; }
+  .ae-featured-copy p { font-size:8px; }
+  #gamesGrid.apps-grid,#aeExploreGrid.apps-grid,.apps-grid,.ae-explore-grid { gap:7px !important; }
+  .app-card,.ae-explore-grid .app-card { min-height:160px !important; padding:8px !important; }
+  .app-cover-art { width:calc(100% + 16px) !important; margin:-8px -8px 7px !important; height:70px !important; flex-basis:70px !important; }
+  .app-name { font-size:9px !important; }
+}
+@media (prefers-reduced-motion:reduce) {
+  .store-sidebar,.top-nav-link,.sidebar-link,.ae-featured-selector,.ae-recommended-item,.ae-featured-cta { transition:none !important; }
+}
+
+/* Final card behaviour: no floating hover information panels. */
+.app-hover-preview,
+.app-preview-badge,
+.app-preview-identity,
+.app-preview-meta,
+.app-preview-specs,
+.app-preview-description,
+.app-preview-actions {
+  display: none !important;
+}
+
+/* Category shortcuts now sit directly below the featured and recommended panels. */
+.ae-home-showcase > .category-strip {
+  margin: 16px 0 0 !important;
+  padding: 13px 0 0 !important;
+  border-top: 1px solid rgba(145, 183, 209, .14) !important;
+}
+@media (max-width: 600px) {
+  .ae-home-showcase > .category-strip {
+    margin-top: 12px !important;
+    padding-top: 11px !important;
+    padding-bottom: 2px !important;
+  }
 }
 </style>
 
